@@ -39,6 +39,12 @@ SECTIONS
         KEEP (*(.init))
 		KEEP (*crt0.o(*.init))
 	} :text = 0
+
+    .hook           :
+    {
+        KEEP(*(.hook))
+    } :text = 0
+
 	.plt      : { *(.plt)	}
 	.interp			: { *(.interp) 	}
 	.hash			: { *(.hash) }
@@ -284,8 +290,8 @@ __Arena2Lo = (0x90002000);
 __Arena2Hi = (0x933E0000);
 
 __gxregs = (__Arena1Hi + 31) & (-32);
-__ipcbufferLo = (0x933e0000);
-__ipcbufferHi = (0x93400000);
+__ipcbufferLo = (0x9000C800);
+__ipcbufferHi = (0x90010800);
 
 /* for backward compatibility with old crt0 */
 PROVIDE (__stack = (0x817FEFF0));

@@ -62,7 +62,7 @@ int main(int argc, char **argv){
 
     FILE *inject = fopen(argv[2],"rb");
     stat(argv[2],&sbuffer);
-    uint32_t inject_len = addpadding(sbuffer.st_size,0x8000);
+    uint32_t inject_len = addpadding(sbuffer.st_size,0x10000);
     char *injectdata = calloc(1,inject_len);
     fread(injectdata,1,sbuffer.st_size,inject);
     fclose(inject);
@@ -93,13 +93,24 @@ int main(int argc, char **argv){
     heap_set[23] = 0x00;
 
     uint32_t *hook = (uint32_t*)(text_section[1] + 0x8C8);
-#define REVERSEENDIAN32(X)  (((X) >> 24) & 0xff) | (((X)<<8) & 0xFF0000) | (((X) >> 8) & 0xff00) | (((X)<<24) & 0xff000000)
     hook[0] = (0x0090803c);
     hook[1] = (0x00088438);
     hook[2] = (0xa603897c);
     hook[3] = (0x18006380);
     hook[4] = (0x2104804e);
+/*
+    uint32_t *vc_hook_null = (uint32_t*)(text_section[1] + 0xB1250);
+    vc_hook_null[0] = 0x0090803c;
+    vc_hook_null[1] = 0xa8088438;
+    vc_hook_null[2] = 0xa603897c;
+    vc_hook_null[3] = 0x2104804e;
 
+    vc_hook_null = (uint32_t*)(text_section[1] + 0xB126C);
+    vc_hook_null[0] = 0x0090803c;
+    vc_hook_null[1] = 0x20098438;
+    vc_hook_null[2] = 0xa603897c;
+    vc_hook_null[3] = 0x2104804e;
+*/
     // assemble new dol 
     FILE *newdol = fopen(argv[3],"wb");
     for(int i=0;i<7;i++){

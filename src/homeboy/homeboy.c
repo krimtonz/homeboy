@@ -4,6 +4,7 @@
 #include <ipc.h>
 #include <stdlib.h>
 #include <malloc.h>
+#include <processor.h>
 
 #include "homeboy.h"
 
@@ -31,7 +32,7 @@ static memory_domain_t memory = {
 void init_stack(void (*hbfunc)(void)){
     register void *r_stack;
     register void *func;
-    static char[0x2000] stack;
+    static char stack[0x2000];
     func = hbfunc;
     r_stack = &stack[sizeof(stack)];
 
@@ -46,15 +47,33 @@ void init_stack(void (*hbfunc)(void)){
                      "mtlr 0"
                      ::
                      "r"(hbfunc),
-                     "r"(r_stack);
+                     "r"(r_stack));
 }
+volatile uint32_t *pi = (uint32_t*)0xCC003000;
+volatile uint32_t *ipc = (uint32_t*)0xCD800000;
 
 static void do_write(){
+    uint32_t msr;   
+    uint32_t reg = ipc[1];
+    while((reg&0xF)!=0) reg = ipc[1];
+    uint32_t mask = pi[1];
+    pi[1] = 0;
+    _CPU_ISR_Disable(msr);
     __io_wiisd.writeSectors(vc_regs.write_lba,vc_regs.block_cnt,(void*)(n64_dram + vc_regs.addr));
+    _CPU_ISR_Restore(msr);
+    pi[1] = mask;
 }
 
 static void do_read(){
+    uint32_t msr;   
+    uint32_t reg = ipc[1];
+    while((reg&0xF)!=0) reg = ipc[1];
+    uint32_t mask = pi[1];
+    pi[1] = 0;
+    _CPU_ISR_Disable(msr);
     __io_wiisd.readSectors(vc_regs.read_lba,vc_regs.block_cnt,(void*)(n64_dram + vc_regs.addr));
+    _CPU_ISR_Restore(msr);
+    pi[1] = mask;
 }
 
 uint8_t lb(void* callback, uint32_t addr, uint8_t* dest){
@@ -81,14 +100,16 @@ uint8_t sh(void* callback, uint32_t addr, uint16_t* src){
     vc_regs.regs[addr>>2] = *src;
     return 1;
 }
+
 uint8_t sw(void* callback, uint32_t addr, uint32_t* src){
     vc_regs.regs[addr>>2] = *src;
     if(addr==0x08){
-        init_stack(do_write);
+        do_write();
     }
     if(addr == 0x0C){
-        init_stack(do_read);
-    }
+        do_read();
+    }   
+    
     return 1;
 }
 uint8_t sd(void* callback, uint32_t addr, uint64_t* src){
@@ -102,25 +123,28 @@ uint8_t unk_0x2C_(void* callback, uint32_t addr, void* unk){
 }
 
 void hb_main(){
+    uint32_t msr;
+    uint32_t reg = ipc[1];
+    while((reg&0xF)!=0) reg = ipc[1];
+    uint32_t mask = pi[1];
+    pi[1] = 0;
+    _CPU_ISR_Disable(msr);
     __IPC_ClntInit();
     __io_wiisd.startup();
-    
-    void *buf = malloc(512);
-    __io_wiisd.readSectors(0,1,buf);
-    
-
+    _CPU_ISR_Restore(msr);
+    pi[1] = mask;
     vc_regs.key = 0x1234;
 }
 
-ENTRY bool _init(void **dest){
-    init_stack(hb_main);
+ENTRY bool _start(void **dest){
+    hb_main();
 
     n64_system.mem_index[(hb_mmreg >> 16) & 0xFFFF] = 0x70;
     n64_system.memory_domain[0x70] = &memory;
     
     bool ret = n64_dram_alloc(dest,0x0800000);
     if(ret){
-        n64_dram = *dest;
+        n64_dram = dest[1];
     }
     return ret;
 }
