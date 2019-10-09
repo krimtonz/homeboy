@@ -98,19 +98,7 @@ int main(int argc, char **argv){
     hook[2] = (0xa603897c);
     hook[3] = (0x18006380);
     hook[4] = (0x2104804e);
-/*
-    uint32_t *vc_hook_null = (uint32_t*)(text_section[1] + 0xB1250);
-    vc_hook_null[0] = 0x0090803c;
-    vc_hook_null[1] = 0xa8088438;
-    vc_hook_null[2] = 0xa603897c;
-    vc_hook_null[3] = 0x2104804e;
 
-    vc_hook_null = (uint32_t*)(text_section[1] + 0xB126C);
-    vc_hook_null[0] = 0x0090803c;
-    vc_hook_null[1] = 0x20098438;
-    vc_hook_null[2] = 0xa603897c;
-    vc_hook_null[3] = 0x2104804e;
-*/
     // assemble new dol 
     FILE *newdol = fopen(argv[3],"wb");
     for(int i=0;i<7;i++){

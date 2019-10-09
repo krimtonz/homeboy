@@ -1,0 +1,8 @@
+.vscode/
+bin/
+obj/
+*.bin
+wadextract/
+*.app
+*.elf
+injector/

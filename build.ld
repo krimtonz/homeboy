@@ -278,33 +278,3 @@ SECTIONS
 	.debug_varnames  0 : { *(.debug_varnames) }
 	/* These must appear regardless of  .  */
 }
-
-__isIPL = 0;
-__stack_addr = (__bss_start + SIZEOF(.bss) + 0x20000 + 7) & (-8);
-__stack_end = (__bss_start + SIZEOF(.bss));
-__intrstack_addr = (__stack_addr + 0x4000);
-__intrstack_end = (__stack_addr);
-__Arena1Lo = (__intrstack_addr + 31) & (-32);
-__Arena1Hi = (0x817FEFF0);
-__Arena2Lo = (0x90002000);
-__Arena2Hi = (0x933E0000);
-
-__gxregs = (__Arena1Hi + 31) & (-32);
-__ipcbufferLo = (0x9000C800);
-__ipcbufferHi = (0x90010800);
-
-/* for backward compatibility with old crt0 */
-PROVIDE (__stack = (0x817FEFF0));
-
-PROVIDE(__isIPL = __isIPL);
-PROVIDE(__stack_addr = __stack_addr);
-PROVIDE(__stack_end = __stack_end);
-PROVIDE(__intrstack_addr = __intrstack_addr);
-PROVIDE(__intrstack_end = __intrstack_end);
-PROVIDE(__Arena1Lo = __Arena1Lo);
-PROVIDE(__Arena1Hi = __Arena1Hi);
-PROVIDE(__Arena2Lo = __Arena2Lo);
-PROVIDE(__Arena2Hi = __Arena2Hi);
-PROVIDE(__ipcbufferLo = __ipcbufferLo);
-PROVIDE(__ipcbufferHi = __ipcbufferHi);
-PROVIDE(__gxregs = __gxregs);

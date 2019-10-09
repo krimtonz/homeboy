@@ -1,15 +1,15 @@
 #include <stdint.h>
-#include <sdcard/wiisd_io.h>
-#include <irq.h>
-#include <ipc.h>
 #include <stdlib.h>
 #include <malloc.h>
-#include <processor.h>
+#include <stdbool.h>
 
 #include "homeboy.h"
+#include "sd.h"
 
 static vc_regs_t vc_regs;
+
 static void *n64_dram = NULL;
+
 static memory_domain_t memory = {
         {0,0,0,0},
         (void*)0,
@@ -29,51 +29,26 @@ static memory_domain_t memory = {
         0x0000FFFF,
 };
 
-void init_stack(void (*hbfunc)(void)){
-    register void *r_stack;
-    register void *func;
-    static char stack[0x2000];
-    func = hbfunc;
-    r_stack = &stack[sizeof(stack)];
-
-    __asm__ volatile("stw 1, -0x04(%1);"
-                     "mflr 0;"
-                     "stw 0, -0x08(%1);"
-                     "subi 1, %1, 0x08;"
-                     "mtctr %0;"
-                     "bctrl;"
-                     "lwz 1, -0x04(%1);"
-                     "lwz 0, -0x08(%1);"
-                     "mtlr 0"
-                     ::
-                     "r"(hbfunc),
-                     "r"(r_stack));
-}
-volatile uint32_t *pi = (uint32_t*)0xCC003000;
-volatile uint32_t *ipc = (uint32_t*)0xCD800000;
-
 static void do_write(){
-    uint32_t msr;   
-    uint32_t reg = ipc[1];
-    while((reg&0xF)!=0) reg = ipc[1];
-    uint32_t mask = pi[1];
-    pi[1] = 0;
-    _CPU_ISR_Disable(msr);
-    __io_wiisd.writeSectors(vc_regs.write_lba,vc_regs.block_cnt,(void*)(n64_dram + vc_regs.addr));
-    _CPU_ISR_Restore(msr);
-    pi[1] = mask;
+    sdio_write_sectors(vc_regs.write_lba,vc_regs.block_cnt,(void*)((char*)n64_dram + vc_regs.addr));
 }
 
 static void do_read(){
-    uint32_t msr;   
-    uint32_t reg = ipc[1];
-    while((reg&0xF)!=0) reg = ipc[1];
-    uint32_t mask = pi[1];
-    pi[1] = 0;
-    _CPU_ISR_Disable(msr);
-    __io_wiisd.readSectors(vc_regs.read_lba,vc_regs.block_cnt,(void*)(n64_dram + vc_regs.addr));
-    _CPU_ISR_Restore(msr);
-    pi[1] = mask;
+    sdio_read_sectors(vc_regs.read_lba,vc_regs.block_cnt,(void*)((char*)n64_dram + vc_regs.addr));
+}
+
+static void do_status_update(){
+    if(vc_regs.status & VC_SD_STATUS_RESET){
+        vc_regs.status = VC_SD_STATUS_BUSY;
+        vc_regs.key = 0;
+        sdio_stop();
+        if(sdio_start()){
+            vc_regs.key = 0x1234;
+            vc_regs.status = VC_SD_STATUS_READY;
+        }else{
+            vc_regs.status = VC_SD_STATUS_ERROR;
+        }
+    }
 }
 
 uint8_t lb(void* callback, uint32_t addr, uint8_t* dest){
@@ -108,8 +83,10 @@ uint8_t sw(void* callback, uint32_t addr, uint32_t* src){
     }
     if(addr == 0x0C){
         do_read();
-    }   
-    
+    }
+    if(addr==0x14){
+        do_status_update();
+    }    
     return 1;
 }
 uint8_t sd(void* callback, uint32_t addr, uint64_t* src){
@@ -122,24 +99,22 @@ uint8_t unk_0x2C_(void* callback, uint32_t addr, void* unk){
     return 1;
 }
 
-void hb_main(){
-    uint32_t msr;
-    uint32_t reg = ipc[1];
-    while((reg&0xF)!=0) reg = ipc[1];
-    uint32_t mask = pi[1];
-    pi[1] = 0;
-    _CPU_ISR_Disable(msr);
-    __IPC_ClntInit();
-    __io_wiisd.startup();
-    _CPU_ISR_Restore(msr);
-    pi[1] = mask;
-    vc_regs.key = 0x1234;
-}
-
 ENTRY bool _start(void **dest){
-    hb_main();
 
+    vc_regs.status = VC_SD_STATUS_BUSY;
+    if(sdio_start()){
+        vc_regs.key = 0x1234;
+        vc_regs.status = VC_SD_STATUS_READY;
+    }else{
+        vc_regs.status = VC_SD_STATUS_ERROR;
+    }
+
+#if VC_VERSION == NACE
+    n64_system.mem_index[(hb_mmreg >> 12) & 0xFFFFF] = 0x70;
+#else
     n64_system.mem_index[(hb_mmreg >> 16) & 0xFFFF] = 0x70;
+#endif
+    
     n64_system.memory_domain[0x70] = &memory;
     
     bool ret = n64_dram_alloc(dest,0x0800000);
