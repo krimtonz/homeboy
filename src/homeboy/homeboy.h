@@ -16,10 +16,12 @@
 
 #define hb_mmreg    0xA8050000
 
-#define VC_SD_STATUS_READY  0
-#define VC_SD_STATUS_BUSY   1
-#define VC_SD_STATUS_ERROR  2
-#define VC_SD_STATUS_RESET  4
+#define SD_ERROR_SUCCESS    0
+#define SD_ERROR_INVAL      1
+#define SD_ERROR_QUEUEFULL  2
+#define SD_ERROR_NOMEM      3
+#define SD_ERROR_NOBUFFER   4
+#define SD_ERROR_OTHER      5
 
 typedef struct{
     char        unk_0x00_[0x04];                                            /* 0x00 */
@@ -59,7 +61,18 @@ typedef union{
         uint32_t write_lba;
         uint32_t read_lba;
         uint32_t block_cnt;
-        uint32_t status;
+            union {
+                struct{
+                uint32_t            : 23;
+                uint32_t error      : 4;
+                uint32_t initialize : 1;
+                uint32_t sdhc       : 1;
+                uint32_t inserted   : 1;
+                uint32_t busy       : 1;
+                uint32_t ready      : 1;
+            };
+            uint32_t status;
+        };
     };
     uint32_t regs[6];
 } vc_regs_t;

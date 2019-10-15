@@ -72,14 +72,22 @@
 #define	SDIO_STATUS_CARD_INITIALIZED	0x10000
 #define SDIO_STATUS_CARD_SDHC			0x100000
 
+#define IPC_OK				  0
+#define IPC_EINVAL			 -4
+#define IPC_ENOHEAP			 -5
+#define IPC_ENOENT			 -6
+#define IPC_EQUEUEFULL		 -8
+#define IPC_ENOMEM			-22
+
 #define READ_BL_LEN					((u8)(__sd0_csd[5]&0x0f))
 #define WRITE_BL_LEN				((u8)(((__sd0_csd[12]&0x03)<<2)|((__sd0_csd[13]>>6)&0x03)))
 
 bool sdio_is_initialized(void);
 bool sdio_is_inserted(void);
-bool sdio_write_sectors(uint32_t sector, uint32_t numSectors,const void* buffer);
-bool sdio_read_sectors(uint32_t sector, uint32_t numSectors,void* buffer);
-bool sdio_stop(void);
-bool sdio_start(void);
+bool sdio_is_sdhc(void);
+int32_t sdio_write_sectors(uint32_t sector, uint32_t numSectors,const void* buffer);
+int32_t sdio_read_sectors(uint32_t sector, uint32_t numSectors,void* buffer);
+int32_t sdio_stop(void);
+int32_t sdio_start(void);
 
 #endif
