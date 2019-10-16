@@ -75,7 +75,7 @@ typedef union{
         };
     };
     uint32_t regs[6];
-} vc_regs_t;
+} hb_sd_regs_t;
 
 uint8_t lb(void* callback, uint32_t addr, uint8_t* dest);
 uint8_t lh(void* callback, uint32_t addr, uint16_t* dest);
