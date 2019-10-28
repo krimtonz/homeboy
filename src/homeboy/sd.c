@@ -4,38 +4,33 @@
 #include "homeboy.h"
 #include "sd.h"
 
-inline uint8_t ipc2hb(int32_t val){
-    if(val == IPC_EINVAL) return SD_ERROR_INVAL;
-    if(val == IPC_ENOMEM) return SD_ERROR_NOMEM;
-    if(val == IPC_EQUEUEFULL) return SD_ERROR_QUEUEFULL;
-    if(val<0) return SD_ERROR_OTHER;
-    return SD_ERROR_SUCCESS;
-}
+static uint8_t *rw_buffer = NULL;
+static const char *sdcard = "/dev/sdio/slot0";
 
 struct _sdiorequest
 {
-	uint32_t    cmd;        /* 0x00 */
-	uint32_t    cmd_type;   /* 0x04 */
-	uint32_t    rsp_type;   /* 0x08 */
-	uint32_t    arg;        /* 0x0C */
-	uint32_t    blk_cnt;    /* 0x10 */
-	uint32_t    blk_size;   /* 0x14 */
-	void       *dma_addr;   /* 0x18 */
-	uint32_t    isdma;      /* 0x1C */
-	uint32_t    pad0;       /* 0x20 */
-};                          /* 0x24 */
+	uint32_t cmd;
+	uint32_t cmd_type;
+	uint32_t rsp_type;
+	uint32_t arg;
+	uint32_t blk_cnt;
+	uint32_t blk_size;
+	void *dma_addr;
+	uint32_t isdma;
+	uint32_t pad0;
+};
  
 struct _sdioresponse
 {
-	uint32_t    rsp_fields[3];      /* 0x00 */
-	uint32_t    acmd12_response;    /* 0x0C */
-};                                  /* 0x10 */
+	uint32_t rsp_fields[3];
+	uint32_t acmd12_response;
+};
 
 typedef struct _ioctlv
 {
-	void       *data;   /* 0x00 */
-	uint32_t    len;    /* 0x04 */
-} ioctlv;               /* 0x08 */
+	void *data;
+	uint32_t len;
+} ioctlv;
  
 static int32_t hId = -1;
  
@@ -46,8 +41,6 @@ static int32_t __sd0_sdhc = 0;
 static uint8_t __sd0_cid[16];
  
 static int32_t __sdio_initialized = 0;
-
-static const char *sdcard = "/dev/sdio/slot0";
 
 static int32_t __sdio_sendcommand(uint32_t cmd,uint32_t cmd_type,uint32_t rsp_type,uint32_t arg,uint32_t blk_cnt,uint32_t blk_size,void *buffer,void *reply,uint32_t rlen)
 {
@@ -268,7 +261,7 @@ static int32_t __sd0_getcid(void)
 }
 
 
-static int32_t __sd0_initio(void)
+static bool __sd0_initio(void)
 {
 	int32_t ret;
 	int32_t tries;
@@ -276,15 +269,11 @@ static int32_t __sd0_initio(void)
 	struct _sdioresponse resp;
 
 
-	ret = __sdio_resetcard();
-    if(ret<0){
-        return ipc2hb(ret);
-    }
+	__sdio_resetcard();
 	status = __sdio_getstatus();
 	
-	if(!(status & SDIO_STATUS_CARD_INSERTED)){
-		return SD_ERROR_SUCCESS;
-    }
+	if(!(status & SDIO_STATUS_CARD_INSERTED))
+		return false;
 
 	if(!(status & SDIO_STATUS_CARD_INITIALIZED))
 	{
@@ -296,12 +285,8 @@ static int32_t __sd0_initio(void)
 		__sd0_fd = ios_open(sdcard,3);
 
 		// reset the host controller
-		if(ret = __sdio_sethcr(SDIOHCR_SOFTWARERESET, 1, 7) < 0){
-            goto fail;
-        } 
-		if(ret = __sdio_waithcr(SDIOHCR_SOFTWARERESET, 1, 1, 7) < 0){
-            goto fail;
-        } 
+		if(__sdio_sethcr(SDIOHCR_SOFTWARERESET, 1, 7) < 0) goto fail;
+		if(__sdio_waithcr(SDIOHCR_SOFTWARERESET, 1, 1, 7) < 0) goto fail;
 
 		// initialize interrupts (sd_reset_card does this on success)
 		__sdio_sethcr(0x34, 4, 0x13f00c3);
@@ -310,65 +295,40 @@ static int32_t __sd0_initio(void)
 		// enable power
 		__sd0_sdhc = 1;
 		ret = __sdio_sethcr(SDIOHCR_POWERCONTROL, 1, 0xe);
-		if(ret < 0){
-            goto fail;
-        } 
+		if(ret < 0) goto fail;
 		ret = __sdio_sethcr(SDIOHCR_POWERCONTROL, 1, 0xf);
-		if(ret < 0){
-            goto fail;
-        }
+		if(ret < 0) goto fail;
 
 		// enable internal clock, wait until it gets stable and enable sd clock
 		ret = __sdio_sethcr(SDIOHCR_CLOCKCONTROL, 2, 0);
-		if(ret < 0){
-            goto fail;
-        }
+		if(ret < 0) goto fail;
 		ret = __sdio_sethcr(SDIOHCR_CLOCKCONTROL, 2, 0x101);
-		if(ret < 0){
-            goto fail;
-        }
+		if(ret < 0) goto fail;
 		ret = __sdio_waithcr(SDIOHCR_CLOCKCONTROL, 2, 0, 2);
-		if(ret < 0){
-            goto fail;
-        }
+		if(ret < 0) goto fail;
 		ret = __sdio_sethcr(SDIOHCR_CLOCKCONTROL, 2, 0x107);
-		if(ret < 0){
-            goto fail;
-        }
+		if(ret < 0) goto fail;
 
 		// setup timeout
 		ret = __sdio_sethcr(SDIOHCR_TIMEOUTCONTROL, 1, SDIO_DEFAULT_TIMEOUT);
-		if(ret < 0){
-            goto fail;
-        }
+		if(ret < 0) goto fail;
 
 		// standard SDHC initialization process
 		ret = __sdio_sendcommand(SDIO_CMD_GOIDLE, 0, 0, 0, 0, 0, NULL, NULL, 0);
-		if(ret < 0){
-            goto fail;
-        }
+		if(ret < 0) goto fail;
 		ret = __sdio_sendcommand(SDIO_CMD_SENDIFCOND, 0, SDIO_RESPONSE_R6, 0x1aa, 0, 0, NULL, &resp, sizeof(resp));
-		if(ret < 0){
-            goto fail;
-        }
-		if((resp.rsp_fields[0] & 0xff) != 0xaa){
-            goto fail;
-        }
+		if(ret < 0) goto fail;
+		if((resp.rsp_fields[0] & 0xff) != 0xaa) goto fail;
 
 		tries = 10;
 		while(tries-- > 0)
 		{
 			ret = __sdio_sendcommand(SDIO_CMD_APPCMD, SDIOCMD_TYPE_AC,SDIO_RESPONSE_R1,0,0,0,NULL,NULL,0);
-			if(ret < 0){
-                goto fail;
-            }
-			
-            ret = __sdio_sendcommand(SDIO_ACMD_SENDOPCOND, 0, SDIO_RESPONSE_R3, 0x40300000, 0, 0, NULL, &resp, sizeof(resp));
-			if(ret < 0){
-                goto fail;
-            }
-			
-            if(resp.rsp_fields[0] & (1 << 31)) break;
+			if(ret < 0) goto fail;
+			ret = __sdio_sendcommand(SDIO_ACMD_SENDOPCOND, 0, SDIO_RESPONSE_R3, 0x40300000, 0, 0, NULL, &resp, sizeof(resp));
+			if(ret < 0) goto fail;
+			if(resp.rsp_fields[0] & (1 << 31)) break;
+
 			for(int i=0;i<0x2B73A840 * ((float)10000/(float)1000000);i++);
 		}
 		if(tries < 0) goto fail;
@@ -380,14 +340,9 @@ static int32_t __sd0_initio(void)
 			__sd0_sdhc = 0;
 
 		ret = __sd0_getcid();
-		if(ret < 0){
-            goto fail;
-        }
-		
-        ret = __sd0_getrca();
-		if(ret < 0){
-            goto fail;
-        }
+		if(ret < 0) goto fail;
+		ret = __sd0_getrca();
+		if(ret < 0) goto fail;
 	}
 	else if(status&SDIO_STATUS_CARD_SDHC)
 		__sd0_sdhc = 1;
@@ -395,45 +350,39 @@ static int32_t __sd0_initio(void)
 		__sd0_sdhc = 0;
  
 	ret = __sdio_setbuswidth(4);
-	if(ret < 0){
-        return ipc2hb(ret);
-    }
+	if(ret<0) return false;
  
 	ret = __sdio_setclock(1);
-	if(ret < 0){
-        return ipc2hb(ret);
-    }
+	if(ret<0) return false;
  
 	ret = __sd0_select();
-	if(ret < 0){
-        return ipc2hb(ret);
-    }
+	if(ret<0) return false;
  
 	ret = __sd0_setblocklength(PAGE_SIZE512);
 	if(ret<0) {
-	    ret = __sd0_deselect();
-		return ipc2hb(ret);
+		ret = __sd0_deselect();
+		return false;
 	}
  
 	ret = __sd0_setbuswidth(4);
 	if(ret<0) {
 		ret = __sd0_deselect();
-		return ipc2hb(ret);
+		return false;
 	}
 	__sd0_deselect();
 
 	__sd0_initialized = 1;
-	return SD_ERROR_SUCCESS;
+	return true;
 
 	fail:
 	__sdio_sethcr(SDIOHCR_SOFTWARERESET, 1, 7);
 	__sdio_waithcr(SDIOHCR_SOFTWARERESET, 1, 1, 7);
 	ios_close(__sd0_fd);
 	__sd0_fd = ios_open(sdcard,3);
-	return ipc2hb(ret);
+	return false;
 }
 
-static int32_t __sdio_deinitialize(void)
+static bool __sdio_deinitialize(void)
 {
 	if(__sd0_fd>=0)
 		ios_close(__sd0_fd);
@@ -443,97 +392,117 @@ static int32_t __sdio_deinitialize(void)
 	return true;
 }
 
-int32_t sdio_start(void)
+bool sdio_start(void)
 {
-	if(__sdio_initialized==1) return SD_ERROR_SUCCESS;
+	if(__sdio_initialized==1) return true;
  
 	if(hId<0) {
 		hId = ios_create_heap((void*)0x933e8000, SDIO_HEAPSIZE);
-		if(hId<0){
-            return ipc2hb(hId);
-        }
+		if(hId<0) return false;
 	}
+
+	if(rw_buffer == NULL) rw_buffer = ios_alloc(hId,(4*1024),32);
+	if(rw_buffer == NULL) return false;
  
 	__sd0_fd = ios_open(sdcard,3);
 
 	if(__sd0_fd<0) {
 		__sdio_deinitialize();
-		return ipc2hb(__sd0_fd);
+		return false;
 	}
-    
-    int32_t ret;
-	ret = __sd0_initio();
-    if(ret<0){
-        __sdio_deinitialize();
-        return ipc2hb(ret);
-    }
-
+ 
+	if(__sd0_initio()==false) {
+		__sdio_deinitialize();
+		return false;
+	}
 	__sdio_initialized = 1;
-
-	return SD_ERROR_SUCCESS;
+	return true;
 }
  
-int32_t sdio_stop(void)
+bool sdio_stop(void)
 {
-	if(__sd0_initialized==0) return 0;
+	if(__sd0_initialized==0) return false;
 
-	int32_t ret = __sdio_deinitialize();
-    
+	__sdio_deinitialize();
+ 
 	__sd0_initialized = 0;
-	return ipc2hb(ret);
+	return true;
 }
 
-int32_t sdio_read_sectors(uint32_t sector, uint32_t numSectors,void* buffer)
+bool sdio_read_sectors(uint32_t sector, uint32_t numSectors,void* buffer)
 {
 	int32_t ret;
 	uint8_t *ptr;
 	uint32_t blk_off;
  
-	if(buffer==NULL) return SD_ERROR_NOBUFFER;
+	if(buffer==NULL) return false;
  
 	ret = __sd0_select();
-	if(ret<0){
-        return ipc2hb(ret);
-    } 
+	if(ret<0) return false;
 
-	if(__sd0_sdhc == 0) sector *= PAGE_SIZE512;
-	ret = __sdio_sendcommand(SDIO_CMD_READMULTIBLOCK,SDIOCMD_TYPE_AC,SDIO_RESPONSE_R1,sector,numSectors,PAGE_SIZE512,buffer,NULL,0);
-    if(ret<0){
-        return ipc2hb(ret);
-    }
-    
-	ret = __sd0_deselect();
-    if(ret<0){
-        return ipc2hb(ret);
-    }
+	if((uint32_t)buffer & 0x1F) {
+		ptr = (uint8_t*)buffer;
+		int secs_to_read;
+		while(numSectors>0) {
+			if(__sd0_sdhc == 0) blk_off = (sector*PAGE_SIZE512);
+			else blk_off = sector;
+			if(numSectors > 8)secs_to_read = 8;
+			else secs_to_read = numSectors;
+			ret = __sdio_sendcommand(SDIO_CMD_READMULTIBLOCK,SDIOCMD_TYPE_AC,SDIO_RESPONSE_R1,blk_off,secs_to_read,PAGE_SIZE512,rw_buffer,NULL,0);
+			if(ret>=0) {
+				memcpy(ptr,rw_buffer,PAGE_SIZE512*secs_to_read);
+				ptr += PAGE_SIZE512*secs_to_read;
+				sector+=secs_to_read;
+				numSectors-=secs_to_read;
+			} else
+				break;
+		}
+	} else {
+		if(__sd0_sdhc == 0) sector *= PAGE_SIZE512;
+		ret = __sdio_sendcommand(SDIO_CMD_READMULTIBLOCK,SDIOCMD_TYPE_AC,SDIO_RESPONSE_R1,sector,numSectors,PAGE_SIZE512,buffer,NULL,0);
+	}
 
-    return SD_ERROR_SUCCESS;
+	__sd0_deselect();
+ 
+	return (ret>=0);
 }
 
-int32_t sdio_write_sectors(uint32_t sector, uint32_t numSectors,const void* buffer)
+bool sdio_write_sectors(uint32_t sector, uint32_t numSectors,const void* buffer)
 {
 	int32_t ret;
 	uint8_t *ptr;
 	uint32_t blk_off;
  
-	if(buffer==NULL) return SD_ERROR_NOBUFFER;
+	if(buffer==NULL) return false;
  
 	ret = __sd0_select();
-	if(ret<0){
-        return ipc2hb(ret);
-    }
+	if(ret<0) return false;
 
-	if(__sd0_sdhc == 0) sector *= PAGE_SIZE512;
-	ret = __sdio_sendcommand(SDIO_CMD_WRITEMULTIBLOCK,SDIOCMD_TYPE_AC,SDIO_RESPONSE_R1,sector,numSectors,PAGE_SIZE512,(char *)buffer,NULL,0);
-    if(ret<0){
-        return ipc2hb(ret);
-    }
-	ret = __sd0_deselect();
-    if(ret<0){
-        return ipc2hb(ret);
-    }
+	if((uint32_t)buffer & 0x1F) {
+		ptr = (uint8_t*)buffer;
+		int secs_to_write;
+		while(numSectors>0) {
+			if(__sd0_sdhc == 0) blk_off = (sector*PAGE_SIZE512);
+			else blk_off = sector;
+			if(numSectors > 8)secs_to_write = 8;
+			else secs_to_write = numSectors;
+			memcpy(rw_buffer,ptr,PAGE_SIZE512*secs_to_write);
+			ret = __sdio_sendcommand(SDIO_CMD_WRITEMULTIBLOCK,SDIOCMD_TYPE_AC,SDIO_RESPONSE_R1,blk_off,secs_to_write,PAGE_SIZE512,rw_buffer,NULL,0);
+			if(ret>=0) {
+				ptr += PAGE_SIZE512*secs_to_write;
+				sector+=secs_to_write;
+				numSectors-=secs_to_write;
+			} else
+				break;
+		}
+	} else {
+		if(__sd0_sdhc == 0) sector *= PAGE_SIZE512;
+		ret = __sdio_sendcommand(SDIO_CMD_WRITEMULTIBLOCK,SDIOCMD_TYPE_AC,SDIO_RESPONSE_R1,sector,numSectors,PAGE_SIZE512,(char *)buffer,NULL,0);
+	}
+
+	__sd0_deselect();
  
-	return SD_ERROR_SUCCESS;
+	return (ret>=0);
 }
 
 bool sdio_is_inserted(void)
@@ -549,5 +518,5 @@ bool sdio_is_initialized(void)
 }
 
 bool sdio_is_sdhc(void){
-    return ((__sdio_getstatus() & SDIO_STATUS_CARD_SDHC) == SDIO_STATUS_CARD_SDHC);
+    return __sd0_sdhc;
 }

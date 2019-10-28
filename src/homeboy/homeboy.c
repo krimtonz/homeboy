@@ -25,8 +25,11 @@ static memory_domain_t memory = {
 static void do_write(){
     hb_sd_regs.ready = 0;
     hb_sd_regs.busy = 1;
-    uint8_t ret = sdio_write_sectors(hb_sd_regs.write_lba,hb_sd_regs.block_cnt,(void*)((char*)n64_dram + hb_sd_regs.addr));
-    hb_sd_regs.error = ret;
+    if(sdio_write_sectors(hb_sd_regs.write_lba,hb_sd_regs.block_cnt,(void*)((char*)n64_dram + hb_sd_regs.addr))){
+        hb_sd_regs.error = SD_ERROR_SUCCESS;
+    }else{
+        hb_sd_regs.error = SD_ERROR_INVAL;
+    }
     hb_sd_regs.ready = 1;
     hb_sd_regs.busy = 0;
 }
@@ -34,8 +37,11 @@ static void do_write(){
 static void do_read(){
     hb_sd_regs.ready = 0;
     hb_sd_regs.busy = 1;
-    uint8_t ret = sdio_read_sectors(hb_sd_regs.read_lba,hb_sd_regs.block_cnt,(void*)((char*)n64_dram + hb_sd_regs.addr));
-    hb_sd_regs.error = ret;
+    if(sdio_read_sectors(hb_sd_regs.read_lba,hb_sd_regs.block_cnt,(void*)((char*)n64_dram + hb_sd_regs.addr))){
+        hb_sd_regs.error = SD_ERROR_SUCCESS;    
+    }else{
+        hb_sd_regs.error = SD_ERROR_INVAL;
+    }
     hb_sd_regs.ready = 1;
     hb_sd_regs.busy = 0;
 }
@@ -45,15 +51,15 @@ static void do_status_update(){
         if(sdio_is_initialized()){
             sdio_stop();
         }
-        memset(&hb_sd_regs.regs[1],0,sizeof(hb_sd_regs.regs) - sizeof(*hb_sd_regs.regs));
         hb_sd_regs.busy = 1;
-        uint8_t ret = sdio_start();
-        hb_sd_regs.error = ret;
-        if(ret == SD_ERROR_SUCCESS){
+        hb_sd_regs.ready = 0;
+        if(sdio_start()){
+            hb_sd_regs.error = SD_ERROR_SUCCESS;
             hb_sd_regs.inserted = sdio_is_inserted();
             hb_sd_regs.sdhc = sdio_is_sdhc();
             hb_sd_regs.ready = 1;
-            hb_sd_regs.busy = 0;
+        }else{
+            hb_sd_regs.error = SD_ERROR_INVAL;
         }
         hb_sd_regs.busy = 0;
     }
