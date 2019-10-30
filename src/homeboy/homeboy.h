@@ -23,6 +23,8 @@
 #define SD_ERROR_NOBUFFER   4
 #define SD_ERROR_OTHER      5
 
+#define HB_HEAPSIZE         0xD000
+
 typedef struct{
     char        unk_0x00_[0x04];                                            /* 0x00 */
     void       *callback_data;                                              /* 0x04 */
@@ -44,6 +46,9 @@ typedef struct{
 
 typedef struct{
     char                unk_0x00_[0xB60];       /* 0x00000 */
+#if VC_VERSION==NARJ || VC_VERSION==NARE
+    char                unk_0xB60_[0x20];       /* 0x00B60 */
+#endif
     memory_domain_t    *memory_domain[0x100];   /* 0x00B60 */
 #if VC_VERSION==NACE
     uint8_t             mem_index[0x100000];    /* 0x00F60 */
@@ -52,6 +57,7 @@ typedef struct{
 #endif
     void               *recompiler_1;           /* 0x10F60 */
     void               *recompiler_2;           /* 0x10F64 */
+    char                unk_0x10F68[0x1370];    /* 0x10F68 */
 } n64_system_t;
 
 typedef union{
@@ -61,20 +67,24 @@ typedef union{
         uint32_t write_lba;
         uint32_t read_lba;
         uint32_t block_cnt;
-            union {
-                struct{
-                uint32_t            : 23;
-                uint32_t error      : 4;
-                uint32_t initialize : 1;
-                uint32_t sdhc       : 1;
-                uint32_t inserted   : 1;
-                uint32_t busy       : 1;
-                uint32_t ready      : 1;
+        union {
+            struct{
+                uint32_t                : 22;
+                uint32_t reset          : 1;
+                uint32_t error          : 4;
+                uint32_t initialize     : 1;
+                uint32_t sdhc           : 1;
+                uint32_t inserted       : 1;
+                uint32_t busy           : 1;
+                uint32_t ready          : 1;
             };
             uint32_t status;
         };
+        uint32_t dram_save;
+        uint32_t dram_save_len;
+        uint32_t dram_restore_key;
     };
-    uint32_t regs[6];
+    uint32_t regs[8];
 } hb_sd_regs_t;
 
 uint8_t lb(void* callback, uint32_t addr, uint8_t* dest);
@@ -109,6 +119,7 @@ uint8_t unk_0x2C_(void* callback, uint32_t addr, void* unk);
 #define n64_dram_alloc_addr     0x80041d7c
 #define alloc_addr              0x800810f8
 #define heap_size_hook_addr     0x8008A164
+#define reset_flag_addr         0x8025D0EC
 #define n64_system_addr         0x809F6C34
 #elif VC_VERSION == NACE
 #define init_hook_addr          0x800078E8
@@ -132,6 +143,7 @@ uint8_t unk_0x2C_(void* callback, uint32_t addr, void* unk);
 #define n64_dram_alloc_addr     0x80041d98
 #define alloc_addr              0x80081104
 #define heap_size_hook_addr     0x8008a170
+#define reset_flag_addr         0x8025D1EC
 #define n64_system_addr         0x809F6d64
 #elif VC_VERSION == NARJ
 #define ios_openasync_addr      0x800c5430
@@ -153,6 +165,7 @@ uint8_t unk_0x2C_(void* callback, uint32_t addr, void* unk);
 #define ios_free_addr           0x800c6940
 #define n64_dram_alloc_addr     0x8005083c
 #define alloc_addr              0x800887e0
+#define reset_flag_addr         0x80200830
 #define n64_system_addr         0x809A7f18
 #elif VC_VERSION == NARE
 #define ios_openasync_addr      0x800c4dec
@@ -174,8 +187,12 @@ uint8_t unk_0x2C_(void* callback, uint32_t addr, void* unk);
 #define ios_free_addr           0x800c62fc
 #define n64_dram_alloc_addr     0x800507c8
 #define alloc_addr              0x80088790
+#define reset_flag_addr         0x801FBA28
 #define n64_system_addr         0x809A3098
 #endif
+
+#define title_id_addr           0x80003180
+#define ios_heap_addr           0x933e8000
 
 typedef int     (*ios_create_heap_t)(void *heap, size_t size);
 typedef void*   (*ios_alloc_t)(int hid, size_t size, size_t page_size);
@@ -195,6 +212,9 @@ typedef int     (*ios_ioctl_t)(int fd, int ioctl, void *buffer_in, size_t size_i
 typedef int     (*ios_ioctlvasync_t)(int fd, int ioctl, int cnt_in, int cnt_io, void *argv, void *callback, void *callback_data);
 typedef int     (*ios_ioctlv_t)(int fd, int ioctl, int cnt_in, int cnt_io, void *argv);
 typedef bool    (*alloc_t)(void **dest,uint32_t size);
+
+#define title_id        (*(uint32_t*)           title_id_addr)
+#define reset_flag      (*(uint32_t*)           reset_flag_addr)
 
 #define n64_system      (*(n64_system_t*)       n64_system_addr)
 
@@ -218,5 +238,7 @@ typedef bool    (*alloc_t)(void **dest,uint32_t size);
 #define ios_free        ((ios_free_t)           ios_free_addr)
 
 #define n64_dram_alloc  ((alloc_t)              n64_dram_alloc_addr)
+
+extern int hb_hid;
 
 #endif

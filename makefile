@@ -1,7 +1,9 @@
 CC          = powerpc-eabi-gcc
+AS			= powerpc-eabi-gcc -x assembler-with-cpp
 LD          = $(CC)
 OBJCOPY     = powerpc-eabi-objcopy
 CFILES      = *.c
+SFILES		= *.s
 SRCDIR		= src
 OBJDIR 		= obj
 BINDIR		= bin
@@ -33,7 +35,9 @@ SRCDIR-$(1)      = src/$(2)
 OBJDIR-$(1)      = obj/$(1)
 BINDIR-$(1)      = bin/$(1)
 CSRC-$(1)       := $$(foreach s,$$(CFILES),$$(wildcard $$(SRCDIR-$(1))/$$(s)))
+SSRC-$(1)		:= $$(foreach s,$$(SFILES),$$(wildcard $$(SRCDIR-$(1))/$$(s)))
 COBJ-$(1)        = $$(patsubst $$(SRCDIR-$(1))/%,$$(OBJDIR-$(1))/%.o,$$(CSRC-$(1)))
+SOBJ-$(1)		 = $$(patsubst $$(SRCDIR-$(1))/%,$$(OBJDIR-$(1))/%.o,$$(SSRC-$(1)))
 ELF-$(1)         = $$(BINDIR-$(1))/$(2).elf
 BIN-$(1)         = $$(BINDIR-$(1))/$(2).bin
 OUTDIR-$(1)      = $$(OBJDIR-$(1)) $$(BINDIR-$(1))
@@ -47,10 +51,10 @@ $$(CLEAN-$(1))       :
 $$(COBJ-$(1))     : $$(OBJDIR-$(1))/%.o: $$(SRCDIR-$(1))/% | $$(OBJDIR-$(1))
 	$(CC) $$(ALL_CPPFLAGS) $$(ALL_CFLAGS) $$< -o $$@
 $$(SOBJ-$(1))		: $$(OBJDIR-$(1))/%.o: $$(SRCDIR-$(1))/% | $$(OBJDIR-$(1))
-	$(AS) -c -MMD -MP $$(ALL_CPPFLAGS) $$< -o $$@
+	$(AS) -c -mregnames $$(ALL_CPPFLAGS) $$< -o $$@
 $$(RESOBJ-$(1))		: $$(OBJDIR-$(1))/%.o: $$(RESDIR-$(1))/% | $$(OBJDIR-$(1))
 	$(GRC) $$< -d $(RESDESC) -o $$@
-$$(ELF-$(1))      : $$(COBJ-$(1)) | $$(BINDIR-$(1))
+$$(ELF-$(1))      : $$(COBJ-$(1)) $$(SOBJ-$(1)) | $$(BINDIR-$(1))
 	$(LD) $$(ALL_LDFLAGS) $$^ -o $$@
 $$(BIN-$(1))      : $$(ELF-$(1)) | $$(BINDIR-$(1))
 	$(OBJCOPY) $$(ALL_OBJCOPYFLAGS) $$< $$@

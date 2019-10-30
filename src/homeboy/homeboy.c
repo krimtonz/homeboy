@@ -3,13 +3,18 @@
 #include <malloc.h>
 #include <stdbool.h>
 #include <string.h>
+#include <stdio.h>
 
 #include "homeboy.h"
 #include "sd.h"
+#include "fs.h"
+#include "cpu.h"
+
+int hb_hid = -1;
 
 static hb_sd_regs_t hb_sd_regs;
-
 static void *n64_dram = NULL;
+static char dram_fn[64];
 
 static memory_domain_t memory = {
         {0,0,0,0},
@@ -46,7 +51,24 @@ static void do_read(){
     hb_sd_regs.busy = 0;
 }
 
-static void do_status_update(){
+ static void do_status_update(){
+    if(hb_sd_regs.reset){
+        int fd = fs_open(dram_fn,3);
+        if(fd<0){
+            fd = fs_create(dram_fn,3);
+        }
+        if(fd>=0){
+            uint32_t dram_params[2];
+            dram_params[0] = hb_sd_regs.dram_save;
+            dram_params[1] = hb_sd_regs.dram_save_len;
+            fs_write(fd,dram_params,sizeof(dram_params));
+            fs_write(fd,(char*)n64_dram + dram_params[0],dram_params[1]);
+            fs_close(fd);
+        }
+        
+        reset_flag = 1;
+        
+    }
     if(hb_sd_regs.initialize){
         if(sdio_is_initialized()){
             sdio_stop();
@@ -74,6 +96,13 @@ uint8_t lh(void* callback, uint32_t addr, uint16_t* dest){
     return 1;
 }
 uint8_t lw(void* callback, uint32_t addr, uint32_t* dest){
+    if(addr == 0x024){
+        *dest = (gettick() & 0xFFFFFFFF00000000) >> 32;
+        return 1;
+    }else if(addr == 0x028){
+        *dest = gettick() & 0xFFFFFFFF;
+        return 1;
+    }
     *dest = (uint32_t)hb_sd_regs.regs[addr>>2];
     return 1;
 }
@@ -116,6 +145,15 @@ uint8_t unk_0x2C_(void* callback, uint32_t addr, void* unk){
 
 ENTRY bool _start(void **dest){
 
+    if(hb_hid<0){
+        hb_hid = ios_create_heap((void*)ios_heap_addr,HB_HEAPSIZE);
+    }
+    if(hb_hid>=0){
+        hb_sd_regs.key = 0x1234;
+    }
+
+    fs_init();
+
 #if VC_VERSION == NACE
     n64_system.mem_index[(hb_mmreg >> 12) & 0xFFFFF] = 0x70;
 #else
@@ -123,12 +161,24 @@ ENTRY bool _start(void **dest){
 #endif
     
     n64_system.memory_domain[0x70] = &memory;
-    
-    hb_sd_regs.key = 0x1234;
 
     bool ret = n64_dram_alloc(dest,0x0800000);
     if(ret){
         n64_dram = dest[1];
     }
+
+    sprintf(dram_fn,"/title/00010001/%8x/data/dram_save",title_id);
+    
+    // Check if a dram restore needs to be done. 
+    int fd = fs_open(dram_fn,1);
+    if(fd>=0){
+        uint32_t dram_params[2];
+        fs_read(fd,dram_params,sizeof(dram_params));
+        fs_read(fd,(char*)n64_dram + dram_params[0], dram_params[1]);
+        fs_close(fd);
+        fs_delete(dram_fn);
+        hb_sd_regs.dram_restore_key = 0x6864;
+    }
+
     return ret;
 }

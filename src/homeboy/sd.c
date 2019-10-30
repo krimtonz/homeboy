@@ -3,6 +3,7 @@
 #include <string.h>
 #include "homeboy.h"
 #include "sd.h"
+#include "io.h"
 
 static uint8_t *rw_buffer = NULL;
 static const char *sdcard = "/dev/sdio/slot0";
@@ -26,14 +27,6 @@ struct _sdioresponse
 	uint32_t acmd12_response;
 };
 
-typedef struct _ioctlv
-{
-	void *data;
-	uint32_t len;
-} ioctlv;
- 
-static int32_t hId = -1;
- 
 static int32_t __sd0_fd = -1;
 static uint16_t  __sd0_rca = 0;
 static int32_t __sd0_initialized = 0;
@@ -46,9 +39,9 @@ static int32_t __sdio_sendcommand(uint32_t cmd,uint32_t cmd_type,uint32_t rsp_ty
 {
 	int32_t ret;
 
-    ioctlv *iovec = ios_alloc(hId,sizeof(*iovec)*3,32);
-    struct _sdiorequest *request = ios_alloc(hId,sizeof(*request),32);
-    struct _sdioresponse *response = ios_alloc(hId,sizeof(*response),32);
+    ioctlv *iovec = ios_alloc(hb_hid,sizeof(*iovec)*3,32);
+    struct _sdiorequest *request = ios_alloc(hb_hid,sizeof(*request),32);
+    struct _sdioresponse *response = ios_alloc(hb_hid,sizeof(*response),32);
 
 	request->cmd = cmd;
 	request->cmd_type = cmd_type;
@@ -73,9 +66,9 @@ static int32_t __sdio_sendcommand(uint32_t cmd,uint32_t cmd_type,uint32_t rsp_ty
  
 	if(reply && !(rlen>16)) memcpy(reply,response,rlen);
 
-    ios_free(hId,request);
-    ios_free(hId,response);
-    ios_free(hId,iovec);
+    ios_free(hb_hid,request);
+    ios_free(hb_hid,response);
+    ios_free(hb_hid,iovec);
 
 	return ret;
 }
@@ -84,42 +77,42 @@ static int32_t __sdio_setclock(uint32_t set)
 {
 	int32_t ret;
 
-    uint32_t *clock = ios_alloc(hId,sizeof(*clock),32);
+    uint32_t *clock = ios_alloc(hb_hid,sizeof(*clock),32);
 
 	*clock = set;
 	ret = ios_ioctl(__sd0_fd,IOCTL_SDIO_SETCLK,clock,sizeof(*clock),NULL,0);
-    ios_free(hId,clock);
+    ios_free(hb_hid,clock);
 	return ret;
 }
 static int32_t __sdio_getstatus(void)
 {
 	int32_t ret;
-    uint32_t *status = ios_alloc(hId,sizeof(*status),32);
+    uint32_t *status = ios_alloc(hb_hid,sizeof(*status),32);
  
 	ret = ios_ioctl(__sd0_fd,IOCTL_SDIO_GETSTATUS,NULL,0,status,sizeof(*status));
 	if(ret<0){
-        ios_free(hId,status);
+        ios_free(hb_hid,status);
         return ret;
     } 
     ret = *status;
-    ios_free(hId,status);
+    ios_free(hb_hid,status);
 	return ret;
 }
  
 static int32_t __sdio_resetcard(void)
 {
 	int32_t ret;
-    uint32_t *status = ios_alloc(hId,sizeof(*status),32);
+    uint32_t *status = ios_alloc(hb_hid,sizeof(*status),32);
 	__sd0_rca = 0;
 	ret = ios_ioctl(__sd0_fd,IOCTL_SDIO_RESETCARD,NULL,0,status,sizeof(*status));
 	if(ret<0){
-        ios_free(hId,status);
+        ios_free(hb_hid,status);
         return ret;
     }
  
 	__sd0_rca = (uint16_t )(*status>>16);
     ret = *status&0xFFFF;
-    ios_free(hId,status);
+    ios_free(hb_hid,status);
 	return (ret&0xffff);
 }
  
@@ -129,8 +122,8 @@ static int32_t __sdio_gethcr(uint8_t reg, uint8_t size, uint32_t *val)
 
 	if(val==NULL) return -4;
 
-    uint32_t *hcr_value = ios_alloc(hId,sizeof(*hcr_value),32);
-    uint32_t *hcr_query = ios_alloc(hId,sizeof(*hcr_query) * 6,32);
+    uint32_t *hcr_value = ios_alloc(hb_hid,sizeof(*hcr_value),32);
+    uint32_t *hcr_query = ios_alloc(hb_hid,sizeof(*hcr_query) * 6,32);
  
  	*hcr_value = 0;
 	*val = 0;
@@ -142,8 +135,8 @@ static int32_t __sdio_gethcr(uint8_t reg, uint8_t size, uint32_t *val)
 	hcr_query[5] = 0;
 	ret = ios_ioctl(__sd0_fd,IOCTL_SDIO_READHCREG,(void*)hcr_query,sizeof(*hcr_query) * 6,hcr_value,sizeof(*hcr_value));
 	*val = *hcr_value;
-    ios_free(hId,hcr_value);
-    ios_free(hId,hcr_query);
+    ios_free(hb_hid,hcr_value);
+    ios_free(hb_hid,hcr_query);
  
 	return ret;
 }
@@ -151,7 +144,7 @@ static int32_t __sdio_gethcr(uint8_t reg, uint8_t size, uint32_t *val)
 static int32_t __sdio_sethcr(uint8_t reg, uint8_t size, uint32_t data)
 {
 	int32_t ret;
-    uint32_t *hcr_query = ios_alloc(hId,sizeof(*hcr_query) * 6,32);
+    uint32_t *hcr_query = ios_alloc(hb_hid,sizeof(*hcr_query) * 6,32);
 	hcr_query[0] = reg;
 	hcr_query[1] = 0;
 	hcr_query[2] = 0;
@@ -159,7 +152,7 @@ static int32_t __sdio_sethcr(uint8_t reg, uint8_t size, uint32_t data)
 	hcr_query[4] = data;
 	hcr_query[5] = 0;
 	ret = ios_ioctl(__sd0_fd,IOCTL_SDIO_WRITEHCREG,(void*)hcr_query,sizeof(*hcr_query)*6,NULL,0);
-    ios_free(hId,hcr_query);
+    ios_free(hb_hid,hcr_query);
  
 	return ret;
 }
@@ -395,13 +388,9 @@ static bool __sdio_deinitialize(void)
 bool sdio_start(void)
 {
 	if(__sdio_initialized==1) return true;
- 
-	if(hId<0) {
-		hId = ios_create_heap((void*)0x933e8000, SDIO_HEAPSIZE);
-		if(hId<0) return false;
-	}
 
-	if(rw_buffer == NULL) rw_buffer = ios_alloc(hId,(4*1024),32);
+
+	if(rw_buffer == NULL) rw_buffer = ios_alloc(hb_hid,(4*1024),32);
 	if(rw_buffer == NULL) return false;
  
 	__sd0_fd = ios_open(sdcard,3);
