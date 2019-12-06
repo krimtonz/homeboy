@@ -132,8 +132,7 @@ uint8_t unk_0x2C_(void* callback, uint32_t addr, void* unk);
 #define xlHeapTake_addr         0x800810f8
 #define heap_size_hook_addr     0x8008A164
 #define reset_flag_addr         0x8025D0EC
-#define n64_cpu_ptr_addr        0x802B1664
-#define gSystem_ptr_addr        0x8025cfe0
+#define gSystem_ptr_addr        0x8020f1f8
 #define N64_DRAM_SIZE           0x00800000
 #elif VC_VERSION == NACE
 #define init_hook_addr          0x800078E8
@@ -158,8 +157,7 @@ uint8_t unk_0x2C_(void* callback, uint32_t addr, void* unk);
 #define xlHeapTake_addr         0x80081104
 #define heap_size_hook_addr     0x8008a170
 #define reset_flag_addr         0x8025D1EC
-#define n64_cpu_ptr_addr        0x802B1794
-#define gSystem_ptr_addr        0x8025d0e0
+#define gSystem_ptr_addr        0x8020f2f8
 #define N64_DRAM_SIZE           0x00800000
 #elif VC_VERSION == NARJ
 #define ios_openasync_addr      0x800c5430
@@ -182,8 +180,7 @@ uint8_t unk_0x2C_(void* callback, uint32_t addr, void* unk);
 #define ramSetSize_addr         0x8005083c
 #define alloc_addr              0x800887e0
 #define reset_flag_addr         0x80200830
-#define n64_cpu_ptr_addr        0x802523EC
-#define gSystem_ptr_addr        0x8021121c
+#define gSystem_ptr_addr        0x80200638
 #define N64_DRAM_SIZE           0x00C00000
 #elif VC_VERSION == NARE
 #define ios_openasync_addr      0x800c4dec
@@ -206,13 +203,7 @@ uint8_t unk_0x2C_(void* callback, uint32_t addr, void* unk);
 #define ramSetSize_addr         0x800507c8
 #define xlHeapTake_addr         0x80088790
 #define reset_flag_addr         0x801FBA28
-#define n64_system_addr         0x809a8738
 #define gSystem_ptr_addr        0x801fb838
-//nare 0xA 801fb838
-    //narj 0xa 8021121c
-    //nacj 0x4 8025cfe0
-    //nace 0x8025d0e0
-#define n64_cpu_ptr_addr        0x80252c0c
 #define N64_DRAM_SIZE           0x00C00000
 #endif
 
