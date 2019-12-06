@@ -143,7 +143,7 @@ uint8_t unk_0x2C_(void* callback, uint32_t addr, void* unk){
     return 1;
 }
 
-ENTRY bool _start(void **dest){
+ENTRY bool _start(void **dest, size_t size){
 
     if(hb_hid<0){
         hb_hid = ios_create_heap((void*)ios_heap_addr,HB_HEAPSIZE);
@@ -155,14 +155,14 @@ ENTRY bool _start(void **dest){
     fs_init();
 
 #if VC_VERSION == NACE
-    n64_system.mem_index[(hb_mmreg >> 12) & 0xFFFFF] = 0x70;
+    n64_cpu->mem_index[(hb_mmreg >> 12) & 0xFFFFF] = 0x70;
 #else
-    n64_system.mem_index[(hb_mmreg >> 16) & 0xFFFF] = 0x70;
+    n64_cpu->mem_index[(hb_mmreg >> 16) & 0xFFFF] = 0x70;
 #endif
     
-    n64_system.memory_domain[0x70] = &memory;
+    n64_cpu->memory_domain[0x70] = &memory;
 
-    bool ret = n64_dram_alloc(dest,0x0800000);
+    bool ret = ramSetSize(dest,N64_DRAM_SIZE);
     if(ret){
         n64_dram = dest[1];
     }

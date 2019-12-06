@@ -58,7 +58,17 @@ typedef struct{
     void               *recompiler_1;           /* 0x10F60 */
     void               *recompiler_2;           /* 0x10F64 */
     char                unk_0x10F68[0x1370];    /* 0x10F68 */
-} n64_system_t;
+} n64_cpu_t;
+
+typedef struct{
+#if VC_VERSION==NARJ || VC_VERSION==NARE
+    char        unk_0x00[0x28];
+    n64_cpu_t  *cpu;
+#else
+    char        unk_0x00[0x10];
+    n64_cpu_t  *cpu;
+#endif
+} gSystem_t;
 
 typedef union{
     struct{
@@ -83,8 +93,10 @@ typedef union{
         uint32_t dram_save;
         uint32_t dram_save_len;
         uint32_t dram_restore_key;
+        uint32_t timebase_hi;
+        uint32_t timebase_lo;
     };
-    uint32_t regs[8];
+    uint32_t regs[11];
 } hb_sd_regs_t;
 
 uint8_t lb(void* callback, uint32_t addr, uint8_t* dest);
@@ -116,11 +128,13 @@ uint8_t unk_0x2C_(void* callback, uint32_t addr, void* unk);
 #define ios_create_heap_addr    0x800b9810
 #define ios_alloc_addr          0x800b9b44
 #define ios_free_addr           0x800b9b48
-#define n64_dram_alloc_addr     0x80041d7c
-#define alloc_addr              0x800810f8
+#define ramSetSize_addr         0x80041d7c
+#define xlHeapTake_addr         0x800810f8
 #define heap_size_hook_addr     0x8008A164
 #define reset_flag_addr         0x8025D0EC
-#define n64_system_addr         0x809F6C34
+#define n64_cpu_ptr_addr        0x802B1664
+#define gSystem_ptr_addr        0x8025cfe0
+#define N64_DRAM_SIZE           0x00800000
 #elif VC_VERSION == NACE
 #define init_hook_addr          0x800078E8
 #define ios_openasync_addr      0x800b8858
@@ -140,11 +154,13 @@ uint8_t unk_0x2C_(void* callback, uint32_t addr, void* unk);
 #define ios_create_heap_addr    0x800b981c
 #define ios_alloc_addr          0x800b9b50
 #define ios_free_addr           0x800b9b54
-#define n64_dram_alloc_addr     0x80041d98
-#define alloc_addr              0x80081104
+#define ramSetSize_addr         0x80041d98
+#define xlHeapTake_addr         0x80081104
 #define heap_size_hook_addr     0x8008a170
 #define reset_flag_addr         0x8025D1EC
-#define n64_system_addr         0x809F6d64
+#define n64_cpu_ptr_addr        0x802B1794
+#define gSystem_ptr_addr        0x8025d0e0
+#define N64_DRAM_SIZE           0x00800000
 #elif VC_VERSION == NARJ
 #define ios_openasync_addr      0x800c5430
 #define ios_open_addr           0x800c5548
@@ -163,10 +179,12 @@ uint8_t unk_0x2C_(void* callback, uint32_t addr, void* unk);
 #define ios_create_heap_addr    0x800c6608
 #define ios_alloc_addr          0x800c693c
 #define ios_free_addr           0x800c6940
-#define n64_dram_alloc_addr     0x8005083c
+#define ramSetSize_addr         0x8005083c
 #define alloc_addr              0x800887e0
 #define reset_flag_addr         0x80200830
-#define n64_system_addr         0x809A7f18
+#define n64_cpu_ptr_addr        0x802523EC
+#define gSystem_ptr_addr        0x8021121c
+#define N64_DRAM_SIZE           0x00C00000
 #elif VC_VERSION == NARE
 #define ios_openasync_addr      0x800c4dec
 #define ios_open_addr           0x800c4f04
@@ -185,10 +203,17 @@ uint8_t unk_0x2C_(void* callback, uint32_t addr, void* unk);
 #define ios_create_heap_addr    0x800c5fc4
 #define ios_alloc_addr          0x800c62f8
 #define ios_free_addr           0x800c62fc
-#define n64_dram_alloc_addr     0x800507c8
-#define alloc_addr              0x80088790
+#define ramSetSize_addr         0x800507c8
+#define xlHeapTake_addr         0x80088790
 #define reset_flag_addr         0x801FBA28
-#define n64_system_addr         0x809A3098
+#define n64_system_addr         0x809a8738
+#define gSystem_ptr_addr        0x801fb838
+//nare 0xA 801fb838
+    //narj 0xa 8021121c
+    //nacj 0x4 8025cfe0
+    //nace 0x8025d0e0
+#define n64_cpu_ptr_addr        0x80252c0c
+#define N64_DRAM_SIZE           0x00C00000
 #endif
 
 #define title_id_addr           0x80003180
@@ -211,12 +236,13 @@ typedef int     (*ios_ioctlasync_t)(int fd, int ioctl, void *buffer_in, size_t s
 typedef int     (*ios_ioctl_t)(int fd, int ioctl, void *buffer_in, size_t size_in, void *buffer_io, size_t size_out);
 typedef int     (*ios_ioctlvasync_t)(int fd, int ioctl, int cnt_in, int cnt_io, void *argv, void *callback, void *callback_data);
 typedef int     (*ios_ioctlv_t)(int fd, int ioctl, int cnt_in, int cnt_io, void *argv);
-typedef bool    (*alloc_t)(void **dest,uint32_t size);
+typedef bool    (*ramSetSize_t)(void **dest,uint32_t size);
 
 #define title_id        (*(uint32_t*)           title_id_addr)
 #define reset_flag      (*(uint32_t*)           reset_flag_addr)
 
-#define n64_system      (*(n64_system_t*)       n64_system_addr)
+#define gSystem         (*(gSystem_t**)         gSystem_ptr_addr)
+#define n64_cpu         gSystem->cpu    
 
 #define ios_openasync   ((ios_openasync_t)      ios_openasync_addr)
 #define ios_open        ((ios_open_t)           ios_open_addr)
@@ -237,7 +263,7 @@ typedef bool    (*alloc_t)(void **dest,uint32_t size);
 #define ios_alloc       ((ios_alloc_t)          ios_alloc_addr)
 #define ios_free        ((ios_free_t)           ios_free_addr)
 
-#define n64_dram_alloc  ((alloc_t)              n64_dram_alloc_addr)
+#define ramSetSize      ((ramSetSize_t)         ramSetSize_addr)
 
 extern int hb_hid;
 
