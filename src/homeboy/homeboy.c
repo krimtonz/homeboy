@@ -16,6 +16,9 @@ static hb_sd_regs_t hb_sd_regs;
 static void *n64_dram = NULL;
 static char dram_fn[64];
 
+char *hb_mem = NULL;
+char *hb_heap = NULL;
+
 static memory_domain_t memory = {
         {0,0,0,0},
         NULL, -hb_mmreg,
@@ -25,6 +28,49 @@ static memory_domain_t memory = {
         hb_mmreg,
         hb_mmreg | 0xFFFF,
         0x00000000, 0x0000FFFF,
+};
+
+uint8_t heap_lb(void* callback, uint32_t addr, uint8_t* dest){
+    *dest = *(uint8_t*)(hb_heap + addr);
+}
+
+uint8_t heap_lh(void* callback, uint32_t addr, uint16_t* dest){
+    *dest = *(uint16_t*)(hb_heap + addr);
+}
+
+uint8_t heap_lw(void* callback, uint32_t addr, uint32_t* dest){
+    *dest = *(uint32_t*)(hb_heap + addr);
+}
+
+uint8_t heap_ld(void* callback, uint32_t addr, uint64_t* dest){
+    *dest = *(uint64_t*)(hb_heap + addr);
+}
+
+uint8_t heap_sb(void* callback, uint32_t addr, uint8_t* src){
+    *(uint8_t*)(hb_heap + addr) = *src;
+}
+
+uint8_t heap_sh(void* callback, uint32_t addr, uint16_t* src){
+    *(uint16_t*)(hb_heap + addr) = *src;
+}
+
+uint8_t heap_sw(void* callback, uint32_t addr, uint32_t* src){
+    *(uint32_t*)(hb_heap + addr) = *src;
+}
+
+uint8_t heap_sd(void* callback, uint32_t addr, uint64_t* src){
+    *(uint64_t*)(hb_heap + addr) = *src;
+}
+
+static memory_domain_t heap_mem = {
+        {0,0,0,0},
+        NULL, -0xA8060000,
+        heap_lb, heap_lh, heap_lw, heap_ld,
+        heap_sb, heap_sh, heap_sw, heap_sd,
+        unk_0x2C_,
+        0xA8060000,
+        0xA845FFFF,
+        0x00400000, 0x3FFFFF,
 };
 
 static void do_write(){
@@ -119,6 +165,14 @@ uint8_t sh(void* callback, uint32_t addr, uint16_t* src){
     return 1;
 }
 
+void write_hb_mem(){
+    memcpy((char*)hb_mem + hb_sd_regs.hb_addr, n64_dram + hb_sd_regs.n64_addr, hb_sd_regs.hb_wr_len);
+}
+
+void read_hb_mem(){
+    memcpy(n64_dram + hb_sd_regs.n64_addr, (char*)hb_mem + hb_sd_regs.hb_addr, hb_sd_regs.hb_rd_len);
+}
+
 uint8_t sw(void* callback, uint32_t addr, uint32_t* src){
     hb_sd_regs.regs[addr>>2] = *src;
     if(addr==0x08){
@@ -129,6 +183,13 @@ uint8_t sw(void* callback, uint32_t addr, uint32_t* src){
     }
     if(addr==0x14){
         do_status_update();
+    }
+    if(addr == 0x34){
+        write_hb_mem();
+
+    }
+    if(addr == 0x38){
+        read_hb_mem();
     }
     return 1;
 }
@@ -158,11 +219,15 @@ ENTRY bool _start(void **dest, size_t size){
     n64_cpu->mem_index[(hb_mmreg >> 12) & 0xFFFFF] = 0x70;
 #else
     n64_cpu->mem_index[(hb_mmreg >> 16) & 0xFFFF] = 0x70;
+    for(int i = 0xA806; i < 0xA816; i++){
+        n64_cpu->mem_index[i] = 0x71;
+    }
 #endif
     
     n64_cpu->memory_domain[0x70] = &memory;
+    n64_cpu->memory_domain[0x71] = &heap_mem;
 
-    bool ret = ramSetSize(dest,N64_DRAM_SIZE);
+    bool ret = ramSetSize(dest,0x00800000);
     if(ret){
         n64_dram = dest[1];
     }
@@ -179,6 +244,9 @@ ENTRY bool _start(void **dest, size_t size){
         fs_delete(dram_fn);
         hb_sd_regs.dram_restore_key = 0x6864;
     }
+
+    xlHeapTake(&hb_mem, 0x70000000 | 0x400000);
+    xlHeapTake(&hb_heap, 0x70000000 | 0x400000);
 
     return ret;
 }

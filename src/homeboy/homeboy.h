@@ -72,11 +72,11 @@ typedef struct{
 
 typedef union{
     struct{
-        uint32_t key;
-        uint32_t addr;
-        uint32_t write_lba;
-        uint32_t read_lba;
-        uint32_t block_cnt;
+        uint32_t key;   /* 0x0000 */
+        uint32_t addr;  /* 0x0004 */ 
+        uint32_t write_lba; /* 0x0008 */
+        uint32_t read_lba;  /* 0x000C */
+        uint32_t block_cnt; /* 0x0010 */
         union {
             struct{
                 uint32_t                : 22;
@@ -88,15 +88,19 @@ typedef union{
                 uint32_t busy           : 1;
                 uint32_t ready          : 1;
             };
-            uint32_t status;
+            uint32_t status;    /* 0x0014 */
         };
-        uint32_t dram_save;
-        uint32_t dram_save_len;
-        uint32_t dram_restore_key;
-        uint32_t timebase_hi;
-        uint32_t timebase_lo;
+        uint32_t dram_save;     /* 0x0018 */
+        uint32_t dram_save_len; /* 0x001C */
+        uint32_t dram_restore_key;  /* 0x0020 */
+        uint32_t timebase_hi;   /* 0x0024 */
+        uint32_t timebase_lo;   /* 0x0028 */
+        uint32_t hb_addr;       /* 0x002C */
+        uint32_t n64_addr;      /* 0x0030 */
+        uint32_t hb_wr_len;     /* 0x0034 */
+        uint32_t hb_rd_len;     /* 0x0038 */
     };
-    uint32_t regs[11];
+    uint32_t regs[15];
 } hb_sd_regs_t;
 
 uint8_t lb(void* callback, uint32_t addr, uint8_t* dest);
@@ -204,7 +208,7 @@ uint8_t unk_0x2C_(void* callback, uint32_t addr, void* unk);
 #define xlHeapTake_addr         0x80088790
 #define reset_flag_addr         0x801FBA28
 #define gSystem_ptr_addr        0x801fb838
-#define N64_DRAM_SIZE           0x00C00000
+#define N64_DRAM_SIZE           0x00800000
 #endif
 
 #define title_id_addr           0x80003180
@@ -228,6 +232,7 @@ typedef int     (*ios_ioctl_t)(int fd, int ioctl, void *buffer_in, size_t size_i
 typedef int     (*ios_ioctlvasync_t)(int fd, int ioctl, int cnt_in, int cnt_io, void *argv, void *callback, void *callback_data);
 typedef int     (*ios_ioctlv_t)(int fd, int ioctl, int cnt_in, int cnt_io, void *argv);
 typedef bool    (*ramSetSize_t)(void **dest,uint32_t size);
+typedef bool    (*xlHeapTake_t)(void **dest, uint32_t size);
 
 #define title_id        (*(uint32_t*)           title_id_addr)
 #define reset_flag      (*(uint32_t*)           reset_flag_addr)
@@ -255,6 +260,7 @@ typedef bool    (*ramSetSize_t)(void **dest,uint32_t size);
 #define ios_free        ((ios_free_t)           ios_free_addr)
 
 #define ramSetSize      ((ramSetSize_t)         ramSetSize_addr)
+#define xlHeapTake      ((xlHeapTake_t)         xlHeapTake_addr)
 
 extern int hb_hid;
 
