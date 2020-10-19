@@ -60,6 +60,8 @@ typedef struct{
     char                unk_0x10F68[0x1370];    /* 0x10F68 */
 } n64_cpu_t;
 
+typedef n64_cpu_t gClassCPU_t;
+
 typedef struct{
 #if VC_VERSION==NARJ || VC_VERSION==NARE
     char        unk_0x00[0x28];
@@ -95,23 +97,16 @@ typedef union{
         uint32_t dram_restore_key;  /* 0x0020 */
         uint32_t timebase_hi;   /* 0x0024 */
         uint32_t timebase_lo;   /* 0x0028 */
-        uint32_t hb_addr;       /* 0x002C */
-        uint32_t n64_addr;      /* 0x0030 */
-        uint32_t hb_wr_len;     /* 0x0034 */
-        uint32_t hb_rd_len;     /* 0x0038 */
     };
-    uint32_t regs[15];
+    uint32_t regs[11];
 } hb_sd_regs_t;
 
-uint8_t lb(void* callback, uint32_t addr, uint8_t* dest);
-uint8_t lh(void* callback, uint32_t addr, uint16_t* dest);
-uint8_t lw(void* callback, uint32_t addr, uint32_t* dest);
-uint8_t ld(void* callback, uint32_t addr, uint64_t* dest);
-uint8_t sb(void* callback, uint32_t addr, uint8_t* src);
-uint8_t sh(void* callback, uint32_t addr, uint16_t* src);
-uint8_t sw(void* callback, uint32_t addr, uint32_t* src);
-uint8_t sd(void* callback, uint32_t addr, uint64_t* src);
-uint8_t unk_0x2C_(void* callback, uint32_t addr, void* unk);
+typedef struct {
+    const char *name;
+    size_t size;
+    int unk_08;
+    int (*event_handler)(void *heap, int event, void *arg);
+} class_type_t;
 
 #if VC_VERSION == NACJ
 #define init_hook_addr          0x800078E8
@@ -209,6 +204,10 @@ uint8_t unk_0x2C_(void* callback, uint32_t addr, void* unk);
 #define reset_flag_addr         0x801FBA28
 #define gSystem_ptr_addr        0x801fb838
 #define N64_DRAM_SIZE           0x00800000
+#define cpuMapObject_addr       0x8004b208
+#define xlObjectMake_addr       0x8008974c
+#define cpuSetDevicePut_addr    0x8004b620
+#define cpuSetDeviceGet_addr    0x8004b608
 #endif
 
 #define title_id_addr           0x80003180
@@ -233,6 +232,10 @@ typedef int     (*ios_ioctlvasync_t)(int fd, int ioctl, int cnt_in, int cnt_io, 
 typedef int     (*ios_ioctlv_t)(int fd, int ioctl, int cnt_in, int cnt_io, void *argv);
 typedef bool    (*ramSetSize_t)(void **dest,uint32_t size);
 typedef bool    (*xlHeapTake_t)(void **dest, uint32_t size);
+typedef int     (*xlObjectMake_t)(void **obj,void *parent,class_type_t *class);
+typedef int     (*cpuMapObject_t)(gClassCPU_t *cpu, void *dev_p, uint32_t address_start, uint32_t address_end, uint32_t param_5);
+typedef int     (*cpuSetDevicePut_t)(gClassCPU_t *cpu, memory_domain_t *dev,void *sb,void *sh,void *sw,void *sd);
+typedef int     (*cpuSetDeviceGet_t)(gClassCPU_t *cpu,memory_domain_t *dev,void *lb,void *lh,void *lw,void *ld);
 
 #define title_id        (*(uint32_t*)           title_id_addr)
 #define reset_flag      (*(uint32_t*)           reset_flag_addr)
@@ -261,6 +264,10 @@ typedef bool    (*xlHeapTake_t)(void **dest, uint32_t size);
 
 #define ramSetSize      ((ramSetSize_t)         ramSetSize_addr)
 #define xlHeapTake      ((xlHeapTake_t)         xlHeapTake_addr)
+#define xlObjectMake    ((xlObjectMake_t)       xlObjectMake_addr)
+#define cpuMapObject    ((cpuMapObject_t)       cpuMapObject_addr)
+#define cpuSetDevicePut ((cpuSetDevicePut_t)    cpuSetDevicePut_addr)
+#define cpuSetDeviceGet ((cpuSetDeviceGet_t)    cpuSetDeviceGet_addr)
 
 extern int hb_hid;
 
