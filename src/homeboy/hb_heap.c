@@ -2,8 +2,9 @@
 #include "hb_heap.h"
 
 class_hb_heap_t *hb_heap_obj = NULL;
+int hb_heap_event(void *heap_p, int event, void *arg);
 
-const class_type_t hb_heap_class = {
+static class_type_t hb_heap_class = {
     "HB-HEAP",
     sizeof(class_hb_heap_t),
     0,
@@ -83,14 +84,22 @@ static bool heap_sd(void* callback, uint32_t addr, uint64_t* src){
     return false;
 }
 
-int hb_heap_event(class_hb_heap_t *heap, int event, void *arg){
+int hb_heap_event(void *heap_p, int event, void *arg)
+{
+    class_hb_heap_t *heap = (class_hb_heap_t*)heap_p;
     // device mapped.
     if(event == 0x1002) {
         if(heap->heap_ptr == NULL){
-            xlHeapTake(&heap->heap_ptr, 0x70000000 | 0x400000);
+            allocMEM2(&heap->heap_ptr, 0x400000);
             heap->heap_size = 0x00400000;
         }
-        cpuSetDevicePut(n64_cpu, arg, heap_sb, heap_sh, heap_sw, heap_sd);
-        cpuSetDeviceGet(n64_cpu, arg, heap_lb, heap_lh, heap_lw, heap_ld);
+        cpuSetDevicePut(gSystem->cpu, arg, heap_sb, heap_sh, heap_sw, heap_sd);
+        cpuSetDeviceGet(gSystem->cpu, arg, heap_lb, heap_lh, heap_lw, heap_ld);
     }
+}
+
+void homeboy_heap_init(void)
+{
+    xlObjectMake((void**)&hb_heap_obj, NULL, &hb_heap_class);
+    cpuMapObject(gSystem->cpu, hb_heap_obj, 0x08060000, 0x08460000, 0);
 }

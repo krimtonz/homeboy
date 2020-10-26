@@ -9,24 +9,22 @@
 #include "sd.h"
 #include "fs.h"
 #include "cpu.h"
-#include "hb_heap.h"
+#include "vc.h"
 
 int hb_hid = -1;
-static hb_sd_regs_t *homeboy_obj = NULL;
+hb_sd_regs_t *homeboy_obj = NULL;
+void *n64_dram = NULL;
+char dram_fn[64];
 
-int homeboy_event(hb_sd_regs_t *regs, int event, void *arg);
+int homeboy_event(void *regs, int event, void *arg);
 
-
-const class_type_t homeboy_class = 
+static class_type_t homeboy_class = 
 {
     "HOMEBOY",
     sizeof(hb_sd_regs_t),
     0,
     homeboy_event
 };
-
-static void *n64_dram = NULL;
-static char dram_fn[64];
 
 static void do_write() 
 {
@@ -203,54 +201,17 @@ bool sd(hb_sd_regs_t *hb_regs, uint32_t addr, uint64_t *src)
     return true;
 }
 
-int homeboy_event(hb_sd_regs_t *regs, int event, void *arg)
+int homeboy_event(void *regs, int event, void *arg)
 {
     if(event == 0x1002)
     {
-        cpuSetDevicePut(n64_cpu, arg, sb, sh, sw, sd);
-        cpuSetDeviceGet(n64_cpu, arg, lb, lh, lw, ld);
+        cpuSetDevicePut(gSystem->cpu, arg, sb, sh, sw, sd);
+        cpuSetDeviceGet(gSystem->cpu, arg, lb, lh, lw, ld);
     }
 }
 
-ENTRY bool _start(void **dest, size_t size)
+void homeboy_init(void)
 {
-    xlObjectMake(&homeboy_obj, NULL, &homeboy_class);
-    cpuMapObject(n64_cpu, homeboy_obj, 0x08050000, 0x0805FFFF, 0);
-
-    xlObjectMake(&hb_heap_obj, NULL, &hb_heap_class);
-    cpuMapObject(n64_cpu, hb_heap_obj, 0x08060000, 0x08460000, 0);
-
-    if(hb_hid < 0)
-    {
-        hb_hid = ios_create_heap((void*)ios_heap_addr, HB_HEAPSIZE);
-    }
-
-    if(hb_hid >= 0)
-    {
-        homeboy_obj->key = 0x1234;
-    }
-
-    fs_init();
-
-    bool ret = ramSetSize(dest, 0x00800000);
-    if(ret)
-    {
-        n64_dram = dest[1];
-    }
-
-    sprintf(dram_fn, "/title/00010001/%8x/data/dram_save", title_id);
-    
-    // Check if a dram restore needs to be done. 
-    int fd = fs_open(dram_fn,1);
-    if(fd >= 0)
-    {
-        uint32_t dram_params[2];
-        fs_read(fd, dram_params, sizeof(dram_params));
-        fs_read(fd, (char*)n64_dram + dram_params[0], dram_params[1]);
-        fs_close(fd);
-        fs_delete(dram_fn);
-        homeboy_obj->dram_restore_key = 0x6864;
-    }
-
-    return ret;
+    xlObjectMake((void**)&homeboy_obj, NULL, &homeboy_class);
+    cpuMapObject(gSystem->cpu, homeboy_obj, 0x08050000, 0x08057FFF, 0);
 }

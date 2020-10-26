@@ -75,6 +75,13 @@
 #define READ_BL_LEN					((u8)(__sd0_csd[5]&0x0f))
 #define WRITE_BL_LEN				((u8)(((__sd0_csd[12]&0x03)<<2)|((__sd0_csd[13]>>6)&0x03)))
 
+#define SD_ERROR_SUCCESS    0
+#define SD_ERROR_INVAL      1
+#define SD_ERROR_QUEUEFULL  2
+#define SD_ERROR_NOMEM      3
+#define SD_ERROR_NOBUFFER   4
+#define SD_ERROR_OTHER      5
+
 bool sdio_is_initialized(void);
 bool sdio_is_inserted(void);
 bool sdio_is_sdhc(void);

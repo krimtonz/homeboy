@@ -2,6 +2,7 @@
 #include <stddef.h>
 #include <string.h>
 #include "homeboy.h"
+#include "vc.h"
 #include "sd.h"
 #include "io.h"
 

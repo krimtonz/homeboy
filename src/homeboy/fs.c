@@ -6,7 +6,7 @@
 #include "fs.h"
 #include "io.h"
 #include "cpu.h"
-#include "homeboy.h"
+#include "vc.h"
 
 struct isfs
 {
