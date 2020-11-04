@@ -97,7 +97,7 @@ typedef struct{
     gClassCPU_t  *cpu;
 } gClassSystem_t;
 
-typedef struct{
+struct gClassCPU_s{
     char        unk_0x00_[0xB60];
     cpu_dev_t  *cpu_devs[0x100];
 #if VC_VERSION == NACE
@@ -108,7 +108,7 @@ typedef struct{
     void       *recompiler_1;
     void       *recompiler_2;
     char        unk_0x10F68[0x1370];
-} gClassCPU_t;
+} ;
 
 #elif IS_MM
 
@@ -200,6 +200,11 @@ typedef struct {
 #define reset_flag_addr         0x8025D0EC
 #define gSystem_ptr_addr        0x8020f1f8
 #define N64_DRAM_SIZE           0x00800000
+#define cpuMapObject_addr       0x8003c614
+#define xlObjectMake_addr       0x800821f4
+#define cpuSetDevicePut_addr    0x8003c7c8
+#define cpuSetDeviceGet_addr    0x8003c7b0
+#define xlHeapFree_addr         0x8008136c
 #elif VC_VERSION == NACE
 #define init_hook_addr          0x800078E8
 #define ios_openasync_addr      0x800b8858
@@ -225,6 +230,11 @@ typedef struct {
 #define reset_flag_addr         0x8025D1EC
 #define gSystem_ptr_addr        0x8020f2f8
 #define N64_DRAM_SIZE           0x00800000
+#define cpuMapObject_addr       0x8003c630
+#define xlObjectMake_addr       0x80082200
+#define cpuSetDevicePut_addr    0x8003c7e4
+#define cpuSetDeviceGet_addr    0x8003c7cc
+#define xlHeapFree_addr         0x8008136c
 #elif VC_VERSION == NARJ
 #define ios_openasync_addr      0x800c5430
 #define ios_open_addr           0x800c5548
@@ -244,10 +254,15 @@ typedef struct {
 #define ios_alloc_addr          0x800c693c
 #define ios_free_addr           0x800c6940
 #define ramSetSize_addr         0x8005083c
-#define alloc_addr              0x800887e0
+#define xlHeapTake_addr         0x800887e0
 #define reset_flag_addr         0x80200830
 #define gSystem_ptr_addr        0x80200638
-#define N64_DRAM_SIZE           0x00C00000
+#define N64_DRAM_SIZE           0x00800000
+#define cpuSetDevicePut_addr    0x8004B694
+#define cpuSetDeviceGet_addr    0x8004B67C
+#define xlObjectMake_addr       0x8008979C
+#define cpuMapObject_addr       0x8004B27C
+#define xlHeapFree_addr         0x80088A60
 #elif VC_VERSION == NARE
 #define ios_openasync_addr      0x800c4dec
 #define ios_open_addr           0x800c4f04

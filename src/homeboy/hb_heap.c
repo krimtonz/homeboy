@@ -1,3 +1,5 @@
+#ifdef HB_HEAP
+
 #include <stdbool.h>
 #include "hb_heap.h"
 
@@ -103,3 +105,5 @@ void homeboy_heap_init(void)
     xlObjectMake((void**)&hb_heap_obj, NULL, &hb_heap_class);
     cpuMapObject(gSystem->cpu, hb_heap_obj, 0x08060000, 0x08460000, 0);
 }
+
+#endif

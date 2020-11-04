@@ -1,12 +1,12 @@
-#include "sys.h"
+#ifdef HB_FAT
 
-#ifndef LITE
 #include <errno.h>
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
 
+#include "sys.h"
 #include "fat.h"
 #include "sd.h"
 #include "vc.h"
@@ -36,7 +36,7 @@ static fat_path_t  *wd;
 
 static int              fat_ready = 0;
 
-static int __attribute__ ((noinline)) init_fat(){
+static int init_fat(){
     if(fat_ready){
         return 0;
     }

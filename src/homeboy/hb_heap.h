@@ -1,8 +1,12 @@
+#ifdef HB_HEAP
+
 #ifndef _HB_HEAP_H
 #define _HB_HEAP_H
 
 #include <stddef.h>
 #include "vc.h"
+
+#define HB_HEAP_START 0xA8060000
 
 typedef struct {
     char *heap_ptr;
@@ -12,5 +16,7 @@ typedef struct {
 void homeboy_heap_init(void);
 
 extern class_hb_heap_t *hb_heap_obj;
+
+#endif
 
 #endif

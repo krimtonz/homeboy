@@ -1,7 +1,11 @@
+#ifdef HB_FAT
+
 #include <stdint.h>
+#include <sys/stat.h>
 #include "vc.h"
 #include "sys.h"
 #include "homeboy.h"
+#include "hb_heap.h"
 
 #define get_n64_buf ((void*)(n64_dram + (((uint32_t)hb_fat_obj->n64_buffer) & 0x3FFFFFF)))
 
@@ -77,6 +81,10 @@ typedef struct {
                     void *buf;
                     size_t size;
                 } getcwd;
+                struct {
+                    char *path;
+                    struct stat *stat;
+                } stat;
             };
         };
         uint32_t regs[6];
@@ -138,13 +146,23 @@ void run_command()
         }
         case SYS_WRITE:
         {
-            void *buf = n64_dram + (((uint32_t)hb_fat_obj->write.buf) & 0x3FFFFFF);
+            void *buf = hb_fat_obj->write.buf;
+            if((uint32_t)buf >= HB_HEAP_START) {
+                buf = (char*)hb_heap_obj->heap_ptr + ((uint32_t)buf - HB_HEAP_START);
+            } else {
+                buf = (char*)n64_dram + ((uint32_t)buf & 0x3FFFFFF);
+            }
             *(int*)get_n64_buf = write(hb_fat_obj->write.fd, buf, hb_fat_obj->write.byte_cnt);
             break;
         }
         case SYS_READ:
         {
-            void *buf = n64_dram + (((uint32_t)hb_fat_obj->read.buf) & 0x3FFFFFF);
+            void *buf = hb_fat_obj->read.buf;
+            if((uint32_t)buf >= HB_HEAP_START) {
+                buf = (char*)hb_heap_obj->heap_ptr + ((uint32_t)buf - HB_HEAP_START);;
+            } else {
+                buf = (char*)n64_dram + ((uint32_t)buf & 0x3FFFFFF);
+            }
             *(int*)get_n64_buf = read(hb_fat_obj->read.fd, buf, hb_fat_obj->read.byte_cnt);
             break;
         }
@@ -157,6 +175,13 @@ void run_command()
         {
             char *buf = n64_dram + (((uint32_t)hb_fat_obj->getcwd.buf) & 0x3FFFFFF);
             getcwd(buf, hb_fat_obj->getcwd.size);
+            break;
+        }
+        case SYS_STAT:
+        {
+            char *path = n64_dram + (((uint32_t)hb_fat_obj->stat.path) & 0x3FFFFFF);
+            struct stat *buf = n64_dram + (((uint32_t)hb_fat_obj->stat.stat) & 0x3FFFFFF);
+            *(int*)get_n64_buf = stat(path, buf);
             break;
         }
 
@@ -222,3 +247,5 @@ void homeboy_fat_init(void)
     xlObjectMake((void**)&hb_fat_obj, NULL, &hb_fat_class);
     cpuMapObject(gSystem->cpu, hb_fat_obj, 0x8058000, 0x805FFFF, 0);
 }
+
+#endif

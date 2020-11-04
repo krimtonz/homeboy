@@ -1,8 +1,4 @@
-/*
-* sys.h
-*
-* definitions for i/o using homeboy devices
-*/
+#ifdef HB_FAT
 
 #ifndef _SYS_H
 #define _SYS_H
@@ -51,5 +47,7 @@ int         stat            (const char *path, struct stat *buf);
 int         lstat           (const char *path, struct stat *buf);
 void        __assert_func   (const char *file, int line, const char *func, const char *failedexpr);
 void        reset_disk      (void);
+
+#endif
 
 #endif

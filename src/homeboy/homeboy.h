@@ -7,11 +7,11 @@
 
 typedef union{
     struct{
-        uint32_t key;   /* 0x0000 */
-        uint32_t addr;  /* 0x0004 */ 
-        uint32_t write_lba; /* 0x0008 */
-        uint32_t read_lba;  /* 0x000C */
-        uint32_t block_cnt; /* 0x0010 */
+        uint32_t key;
+        uint32_t addr;
+        uint32_t write_lba;
+        uint32_t read_lba;
+        uint32_t block_cnt;
         union {
             struct{
                 uint32_t                : 22;
@@ -23,13 +23,13 @@ typedef union{
                 uint32_t busy           : 1;
                 uint32_t ready          : 1;
             };
-            uint32_t status;    /* 0x0014 */
+            uint32_t status;
         };
-        uint32_t dram_save;     /* 0x0018 */
-        uint32_t dram_save_len; /* 0x001C */
-        uint32_t dram_restore_key;  /* 0x0020 */
-        uint32_t timebase_hi;   /* 0x0024 */
-        uint32_t timebase_lo;   /* 0x0028 */
+        uint32_t dram_save;
+        uint32_t dram_save_len;
+        uint32_t dram_restore_key;
+        uint32_t timebase_hi;
+        uint32_t timebase_lo;
     };
     uint32_t regs[11];
 } hb_sd_regs_t;

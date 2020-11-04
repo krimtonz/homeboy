@@ -1,10 +1,11 @@
+#ifdef HB_FAT
+
 /*
 * fat.h
 *
 * definitions for the fat file system
 */
 
-#ifndef LITE
 #ifndef _FAT_H
 #define _FAT_H
 
@@ -124,4 +125,5 @@ int             fat_attribute   (fat_entry_t *ent, uint8_t attribute);
 int             dir_find        (fat_ctxt_t *fat, uint32_t cluster, const char *name, fat_entry_t *entry);
 
 #endif
+
 #endif

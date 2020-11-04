@@ -1,3 +1,5 @@
+#ifdef HB_FAT
+
 /* list.h
  * -glank
  */
@@ -42,3 +44,5 @@ void list_destroy(struct list *list);
 #endif
 
 #endif
+
+#endif  

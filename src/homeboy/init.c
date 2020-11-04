@@ -12,9 +12,20 @@
 
 ENTRY bool _start(void **dest, size_t size)
 {
+    if(!ramSetSize(dest, 0x00800000))
+    {
+        return 0;
+    }
+
+    n64_dram = dest[1];
+
     homeboy_init();
+#ifdef HB_HEAP
     homeboy_heap_init();
+#endif
+#ifdef HB_FAT
     homeboy_fat_init();
+#endif
 
     if(hb_hid < 0)
     {
@@ -28,11 +39,6 @@ ENTRY bool _start(void **dest, size_t size)
 
     fs_init();
 
-    bool ret = ramSetSize(dest, 0x00800000);
-    if(ret)
-    {
-        n64_dram = dest[1];
-    }
 
     sprintf(dram_fn, "/title/00010001/%8x/data/dram_save", title_id);
     
@@ -48,5 +54,5 @@ ENTRY bool _start(void **dest, size_t size)
         homeboy_obj->dram_restore_key = 0x6864;
     }
 
-    return ret;
+    return 1;
 }

@@ -1,4 +1,5 @@
-#ifndef LITE
+#ifdef HB_FAT
+
 #include <errno.h>
 #include <string.h>
 #include <stdlib.h>
@@ -362,7 +363,7 @@ static void cache_dirty(fat_ctxt_t *fat, enum fat_cache_type type){
     fat->cache[type].dirty = 1;
 }
 
-static __attribute__ ((noinline)) int cache_flush(fat_ctxt_t *fat, enum fat_cache_type type){
+static int cache_flush(fat_ctxt_t *fat, enum fat_cache_type type){
     fat_cache_t *cache = &fat->cache[type];
     if(!cache->valid || !cache->dirty){
         return 0;
@@ -405,7 +406,7 @@ static void *cache_prep(fat_ctxt_t *fat, enum fat_cache_type type, uint32_t lba,
     return cache->data;
 }
 
-static __attribute__ ((noinline)) void *cache_load(fat_ctxt_t *fat, enum fat_cache_type type, uint32_t lba){
+static void *cache_load(fat_ctxt_t *fat, enum fat_cache_type type, uint32_t lba){
     fat_cache_t *cache = &fat->cache[type];
     
     // loading from data in the cache already, and cache is valid

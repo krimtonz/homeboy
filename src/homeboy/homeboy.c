@@ -111,9 +111,15 @@ static void do_read()
     }
 }
 
+#if IS_OOT
+#define ADDR_OFFSET 0x08050000
+#else 
+#define ADDR_OFFSET 0x100A0000
+#endif
+
 bool lb(hb_sd_regs_t *hb_regs, uint32_t addr, uint8_t *dest)
 {
-    addr -= 0x100A0000;
+    addr -= ADDR_OFFSET;
     *dest = (uint8_t)hb_regs->regs[addr >> 2];
 
     return true;
@@ -121,7 +127,7 @@ bool lb(hb_sd_regs_t *hb_regs, uint32_t addr, uint8_t *dest)
 
 bool lh(hb_sd_regs_t *hb_regs, uint32_t addr, uint16_t *dest)
 {
-    addr -= 0x100A0000;
+    addr -= ADDR_OFFSET;
     *dest = (uint16_t)hb_regs->regs[addr >> 2];
 
     return true;
@@ -129,7 +135,7 @@ bool lh(hb_sd_regs_t *hb_regs, uint32_t addr, uint16_t *dest)
 
 bool lw(hb_sd_regs_t *hb_regs, uint32_t addr, uint32_t *dest)
 {
-    addr -= 0x100a0000;
+    addr -= ADDR_OFFSET;
 
     if(addr == 0x024)
     {
@@ -148,14 +154,14 @@ bool lw(hb_sd_regs_t *hb_regs, uint32_t addr, uint32_t *dest)
 
 bool ld(hb_sd_regs_t *hb_regs, uint32_t addr, uint64_t *dest)
 {
-    addr -= 0x100a0000;
+    addr -= ADDR_OFFSET;
     *dest = (uint64_t)homeboy_obj->regs[addr >> 2];
     return true;
 }
 
 bool sb(hb_sd_regs_t *hb_regs, uint32_t addr, uint8_t *src)
 {
-    addr -= 0x100A0000;
+    addr -= ADDR_OFFSET;
     hb_regs->regs[addr >> 2] = *src;
 
     return true;
@@ -163,7 +169,7 @@ bool sb(hb_sd_regs_t *hb_regs, uint32_t addr, uint8_t *src)
 
 bool sh(hb_sd_regs_t *hb_regs, uint32_t addr, uint16_t *src)
 {
-    addr -= 0x100A0000;
+    addr -= ADDR_OFFSET;
     hb_regs->regs[addr >> 2] = *src;
 
     return true;
@@ -171,7 +177,7 @@ bool sh(hb_sd_regs_t *hb_regs, uint32_t addr, uint16_t *src)
 
 bool sw(hb_sd_regs_t *hb_regs, uint32_t addr, uint32_t *src)
 {
-    addr -= 0x100A0000;
+    addr -= ADDR_OFFSET;
     
     homeboy_obj->regs[addr >> 2] = *src;
     
@@ -193,7 +199,7 @@ bool sw(hb_sd_regs_t *hb_regs, uint32_t addr, uint32_t *src)
 
 bool sd(hb_sd_regs_t *hb_regs, uint32_t addr, uint64_t *src)
 {
-    addr -= 0x100A0000;
+    addr -= ADDR_OFFSET;
     uint32_t *src32 = (uint32_t*)src;
     hb_regs->regs[addr >> 2] = src32[0];
     hb_regs->regs[(addr >> 2) + 1] = src32[1];

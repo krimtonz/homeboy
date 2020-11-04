@@ -1,3 +1,5 @@
+#ifdef HB_FAT
+
 /* list.c
  * -glank
  */
@@ -262,4 +264,6 @@ void list_destroy(struct list *list)
 
 #ifdef __cplusplus
 }
+#endif
+
 #endif
