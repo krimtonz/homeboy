@@ -92,8 +92,8 @@ int hb_heap_event(void *heap_p, int event, void *arg)
     // device mapped.
     if(event == 0x1002) {
         if(heap->heap_ptr == NULL){
-            allocMEM2(&heap->heap_ptr, 0xC00000);
-            heap->heap_size = 0x00C00000;
+            allocMEM2(&heap->heap_ptr, 0x400000);
+            heap->heap_size = 0x00400000;
         }
         cpuSetDevicePut(gSystem->cpu, arg, heap_sb, heap_sh, heap_sw, heap_sd);
         cpuSetDeviceGet(gSystem->cpu, arg, heap_lb, heap_lh, heap_lw, heap_ld);
