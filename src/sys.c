@@ -1,5 +1,3 @@
-#ifdef HB_FAT
-
 #include <errno.h>
 #include <stdio.h>
 #include <stdarg.h>
@@ -750,4 +748,8 @@ int lstat(const char *path, struct stat *buf){
     return stat(path, buf);
 }
 
-#endif
+static int _err = 0;
+
+int *__errno() {
+    return &_err;
+}

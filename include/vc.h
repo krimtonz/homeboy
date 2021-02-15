@@ -29,6 +29,21 @@ typedef bool (*sw_t)(void *dev_obj, uint32_t addr, uint32_t *src);
 typedef bool (*sd_t)(void *dev_obj, uint32_t addr, uint64_t *src);
 typedef bool (*unk_2c_t)(void *dev_obj, uint32_t addr, void*);
 
+enum ppc_exception {
+    EX_RESET,
+    EX_MACH_CHECK,
+    EX_DSI,
+    EX_ISI,
+    EX_EXT_INTR,
+    EX_ALIGN,
+    EX_PROG,
+    EX_FP_UNAVAIL,
+    EX_DECR,
+    EX_SYSCALL,
+    EX_TRACE,
+    EX_MAX
+};
+
 typedef struct{
     char        unk_0x00_[0x04];    /* 0x00 */
     void       *dev_obj;            /* 0x04 */
@@ -175,6 +190,34 @@ typedef struct {
     int (*event_handler)(void *heap, int event, void *arg);
 } class_type_t;
 
+typedef struct thread_context_s     thread_context_t;
+
+struct thread_context_s {
+    /* 0x0000 */ uint32_t gpr[32];
+    /* 0x0080 */ uint32_t cr;
+    /* 0x0084 */ uint32_t lr;
+    /* 0x0088 */ uint32_t ctr;
+    /* 0x008C */ uint32_t xer;
+    union {
+        /* 0x0090 */ double fpr[32];
+        /* 0x0090 */ uint64_t fpr_64[32];
+    };
+    /* 0x0190 */ uint64_t fscr;
+    /* 0x0198 */ uint32_t srr0;
+    /* 0x019C */ uint32_t srr1;
+    /* 0x01A0 */ char unk_0x1A0[8];
+    /* 0x01A8 */ uint32_t gqr[7];
+    /* 0x01C8 */ uint64_t ps[32];
+    /* 0x02C8 */ char unk_0x2C8[0x14];
+    /* 0x02DC */ thread_context_t **queue;
+    /* 0x02E0 */ thread_context_t *next;
+    /* 0x02E4 */ thread_context_t *prev;
+    /* 0x02E8 */ char unk_0x2E8[0x1C];
+    /* 0x0304 */ void *stack_start;
+    /* 0x0308 */ void *stack_end;
+    /* 0x030C */ char unk_0x30C[12];
+}; // size = 0x318
+
 #if VC_VERSION == NACJ
 #define init_hook_addr          0x800078E8
 #define ios_openasync_addr      0x800b884c
@@ -205,6 +248,9 @@ typedef struct {
 #define cpuSetDevicePut_addr    0x8003c7c8
 #define cpuSetDeviceGet_addr    0x8003c7b0
 #define xlHeapFree_addr         0x8008136c
+#define OSCreateThread_addr     0x800929f4
+#define OSResumeThread_addr     0x8009305c
+#define OSSuspendThread_addr    0x800932f4
 #elif VC_VERSION == NACE
 #define init_hook_addr          0x800078E8
 #define ios_openasync_addr      0x800b8858
@@ -235,6 +281,9 @@ typedef struct {
 #define cpuSetDevicePut_addr    0x8003c7e4
 #define cpuSetDeviceGet_addr    0x8003c7cc
 #define xlHeapFree_addr         0x8008136c
+#define OSCreateThread_addr     0x80092a00
+#define OSResumeThread_addr     0x80093068
+#define OSSuspendThread_addr    0x80093300
 #elif VC_VERSION == NARJ
 #define ios_openasync_addr      0x800c5430
 #define ios_open_addr           0x800c5548
@@ -263,6 +312,9 @@ typedef struct {
 #define xlObjectMake_addr       0x8008979C
 #define cpuMapObject_addr       0x8004B27C
 #define xlHeapFree_addr         0x80088A60
+#define OSCreateThread_addr     0x8009b2d8
+#define OSResumeThread_addr     0x8009b948
+#define OSSuspendThread_addr    0x8009bbe0
 #elif VC_VERSION == NARE
 #define ios_openasync_addr      0x800c4dec
 #define ios_open_addr           0x800c4f04
@@ -291,8 +343,13 @@ typedef struct {
 #define cpuSetDevicePut_addr    0x8004b620
 #define cpuSetDeviceGet_addr    0x8004b608
 #define xlHeapFree_addr         0x80088a10
+#define OSCreateThread_addr     0x8009afbc
+#define OSResumeThread_addr     0x8009b624
+#define OSSuspendThread_addr    0x8009b8bc
 #endif
 
+#define cur_thread_addr         0x800000C0
+#define ex_handlers_addr        0x80003000
 #define title_id_addr           0x80003180
 #define ios_heap_addr           0x933e8000
 
@@ -315,16 +372,23 @@ typedef int     (*ios_ioctlvasync_t)(int fd, int ioctl, int cnt_in, int cnt_io, 
 typedef int     (*ios_ioctlv_t)(int fd, int ioctl, int cnt_in, int cnt_io, void *argv);
 typedef bool    (*ramSetSize_t)(void **dest,uint32_t size);
 typedef bool    (*xlHeapTake_t)(void **dest, uint32_t size);
+typedef bool    (*xlHeapFree_t)(void *ptr);
 typedef int     (*xlObjectMake_t)(void **obj, void *parent, class_type_t *class);
 typedef int     (*cpuMapObject_t)(gClassCPU_t *cpu, void *dev_p, uint32_t address_start, uint32_t address_end, uint32_t param_5);
 typedef int     (*cpuSetDevicePut_t)(gClassCPU_t *cpu, cpu_dev_t *dev,void *sb,void *sh,void *sw,void *sd);
 typedef int     (*cpuSetDeviceGet_t)(gClassCPU_t *cpu, cpu_dev_t *dev,void *lb,void *lh,void *lw,void *ld);
-typedef bool    (*xlHeapFree_t)(void *ptr);
+typedef void    *(*OSThreadEntry_t)(void *arg);
+typedef void    (*OSCreateThread_t)(thread_context_t *thread, OSThreadEntry_t entry, void *arg, void *stack, size_t stack_size, int pri, int detached);
+typedef void    (*OSResumeThread_t)(thread_context_t *thread);
+typedef void    (*OSSuspendThread_t)(thread_context_t *thread);
+typedef void    (*ex_handler_t)(enum ppc_exception);
 
 #define title_id        (*(uint32_t*)           title_id_addr)
 #define reset_flag      (*(uint32_t*)           reset_flag_addr)
 
-#define gSystem         (*(gClassSystem_t**)         gSystem_ptr_addr)
+#define cur_thread      (*(thread_context_t**)  cur_thread_addr)
+#define ex_handlers     ((ex_handler_t*)        ex_handlers_addr)
+#define gSystem         (*(gClassSystem_t**)    gSystem_ptr_addr)
 #define n64_cpu         gSystem->cpu    
 
 #define ios_openasync   ((ios_openasync_t)      ios_openasync_addr)
@@ -353,6 +417,9 @@ typedef bool    (*xlHeapFree_t)(void *ptr);
 #define cpuMapObject    ((cpuMapObject_t)       cpuMapObject_addr)
 #define cpuSetDevicePut ((cpuSetDevicePut_t)    cpuSetDevicePut_addr)
 #define cpuSetDeviceGet ((cpuSetDeviceGet_t)    cpuSetDeviceGet_addr)
+#define OSCreateThread  ((OSCreateThread_t)     OSCreateThread_addr)
+#define OSResumeThread  ((OSResumeThread_t)     OSResumeThread_addr)
+#define OSSuspendThread ((OSSuspendThread_t)    OSSuspendThread_addr)
 
 #define allocMEM2(ptr, size)    xlHeapTake((void**)(ptr), (0x70000000 | (size)))
 

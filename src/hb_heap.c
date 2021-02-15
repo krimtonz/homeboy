@@ -1,18 +1,16 @@
-#ifdef HB_HEAP
-
 #include <stdbool.h>
 #include "hb_heap.h"
 
 class_hb_heap_t *hb_heap_obj = NULL;
 int hb_heap_event(void *heap_p, int event, void *arg);
 
+#if HB_HEAP
 static class_type_t hb_heap_class = {
     "HB-HEAP",
     sizeof(class_hb_heap_t),
     0,
     hb_heap_event
 };
-
 
 static bool heap_lb(void* callback, uint32_t addr, uint8_t* dest){
     if(hb_heap_obj != NULL && hb_heap_obj->heap_ptr != NULL){

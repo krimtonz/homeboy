@@ -1,11 +1,11 @@
-#ifdef HB_FAT
-
 #include <stdint.h>
 #include <sys/stat.h>
 #include "vc.h"
 #include "sys.h"
 #include "homeboy.h"
 #include "hb_heap.h"
+
+#if HB_FAT
 
 #define get_n64_buf ((void*)(n64_dram + (((uint32_t)hb_fat_obj->n64_buffer) & 0x3FFFFFF)))
 
@@ -245,7 +245,7 @@ int hb_fat_event(void *hb_fat_p, int event, void *arg){
 void homeboy_fat_init(void)
 {
     xlObjectMake((void**)&hb_fat_obj, NULL, &hb_fat_class);
-    cpuMapObject(gSystem->cpu, hb_fat_obj, 0x8058000, 0x805FFFF, 0);
+    cpuMapObject(gSystem->cpu, hb_fat_obj, 0x8058000, 0x805BFFF, 0);
 }
 
 #endif

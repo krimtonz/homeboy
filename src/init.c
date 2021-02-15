@@ -2,11 +2,14 @@
 #include <stddef.h>
 #include <stdbool.h>
 #include <stdio.h>
-#include "homeboy.h"
-#include "hb_heap.h"
-#include "vc.h"
-#include "hb_fat.h"
 #include "fs.h"
+#include "hb_debug.h"
+#include "hb_heap.h"
+#include "hb_fat.h"
+#include "homeboy.h"
+#include "sys.h"
+#include "vc.h"
+#include "hb_exception.h"
 
 #define HB_HEAPSIZE         0xD000
 
@@ -25,6 +28,12 @@ ENTRY bool _start(void **dest, size_t size)
 #endif
 #ifdef HB_FAT
     homeboy_fat_init();
+#endif
+#ifdef HB_DBG
+    homeboy_debug_init();
+#endif
+#ifdef HB_EXCEPTIONS
+    init_hb_exceptions();
 #endif
 
     if(hb_hid < 0)

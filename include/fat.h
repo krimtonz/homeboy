@@ -1,5 +1,3 @@
-#ifdef HB_FAT
-
 /*
 * fat.h
 *
@@ -123,7 +121,5 @@ int             fat_remove      (fat_entry_t *entry);
 int             fat_rename      (fat_ctxt_t *fat, fat_path_t *ent_fp, fat_path_t *dir_fp, const char *path, fat_entry_t *new_ent);
 int             fat_attribute   (fat_entry_t *ent, uint8_t attribute);
 int             dir_find        (fat_ctxt_t *fat, uint32_t cluster, const char *name, fat_entry_t *entry);
-
-#endif
 
 #endif

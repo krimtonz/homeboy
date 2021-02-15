@@ -12,7 +12,7 @@ NAME		= homeboy
 RESDESC		= res.json
 
 ADDRESS     = 0x90000800
-ALL_CFLAGS      = -c -mcpu=750 -meabi -mhard-float -G 0 -O3 -ffunction-sections -fdata-sections $(CFLAGS)
+ALL_CFLAGS      = -c -Iinclude -mcpu=750 -meabi -mhard-float -G 0 -O3 -ffunction-sections -fdata-sections $(CFLAGS)
 ALL_CPPFLAGS	= $(CPPFLAGS)
 ALL_LDFLAGS     = -T build.ld -G 0 -nostartfiles -specs=nosys.specs -Wl,--section-start,.init=$(ADDRESS) $(LDFLAGS)
 ALL_OBJCOPYFLAGS	= -S -O binary --set-section-flags .bss=alloc,load,contents $(OBJCOPYFLAGS)
@@ -31,7 +31,7 @@ clean       :
 .PHONY		: all clean
 
 define bin_template
-SRCDIR-$(1)      = src/$(2)
+SRCDIR-$(1)      = src
 OBJDIR-$(1)      = obj/$(1)
 BINDIR-$(1)      = bin/$(1)
 CSRC-$(1)       := $$(foreach s,$$(CFILES),$$(wildcard $$(SRCDIR-$(1))/$$(s)))

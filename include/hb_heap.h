@@ -1,5 +1,3 @@
-#ifdef HB_HEAP
-
 #ifndef _HB_HEAP_H
 #define _HB_HEAP_H
 
@@ -16,7 +14,5 @@ typedef struct {
 void homeboy_heap_init(void);
 
 extern class_hb_heap_t *hb_heap_obj;
-
-#endif
 
 #endif

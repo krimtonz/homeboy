@@ -1,5 +1,3 @@
-#ifdef HB_FAT
-
 #include <errno.h>
 #include <string.h>
 #include <stdlib.h>
@@ -532,7 +530,7 @@ static int cluster_get(fat_ctxt_t *fat, uint32_t cluster, uint32_t *value){
         *value = get_word(block,offset,4);
         *value &= 0x0FFFFFFF;
     }
-    if(cluster == fat->blocks_free && value != 0){
+    if(cluster == fat->blocks_free && *value != 0){
         fat->blocks_free++;
     }
     return 0;
@@ -1881,4 +1879,3 @@ int fat_init(fat_ctxt_t *fat){
     }
     return 0;
 }
-#endif
